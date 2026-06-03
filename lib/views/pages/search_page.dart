@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import '../../core/theme/app_colors.dart';
 import '../widgets/publication_card.dart';
 import '../widgets/glass_card.dart';
@@ -19,26 +20,56 @@ class SearchPage extends StatefulWidget {
 
 class _SearchPageState extends State<SearchPage> {
   late final TextEditingController _searchController;
+  late final ScrollController _scrollController;
+  bool _isSearchVisible = true;
 
   @override
   void initState() {
     super.initState();
     // Đồng bộ ô nhập liệu với từ khóa toàn cục ban đầu
     _searchController = TextEditingController(text: SharedState.activeQueryNotifier.value);
+    _scrollController = ScrollController();
+    _scrollController.addListener(_scrollListener);
   }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _scrollController.removeListener(_scrollListener);
+    _scrollController.dispose();
     super.dispose();
+  }
+
+  void _scrollListener() {
+    // Luôn hiển thị thanh tìm kiếm khi cuộn lên sát đầu trang
+    if (_scrollController.position.pixels <= 10) {
+      if (!_isSearchVisible) {
+        setState(() {
+          _isSearchVisible = true;
+        });
+      }
+      return;
+    }
+
+    if (_scrollController.position.userScrollDirection == ScrollDirection.reverse) {
+      if (_isSearchVisible) {
+        setState(() {
+          _isSearchVisible = false;
+        });
+      }
+    } else if (_scrollController.position.userScrollDirection == ScrollDirection.forward) {
+      if (!_isSearchVisible) {
+        setState(() {
+          _isSearchVisible = true;
+        });
+      }
+    }
   }
 
   void _triggerSearch() {
     final query = _searchController.text.trim();
-    if (query.isNotEmpty) {
-      // Cập nhật từ khóa tìm kiếm toàn cục, tự động kích hoạt Notifier tải dữ liệu
-      SharedState.activeQueryNotifier.value = query;
-    }
+    // Cập nhật từ khóa tìm kiếm toàn cục, tự động kích hoạt Notifier tải dữ liệu
+    SharedState.activeQueryNotifier.value = query;
   }
 
   @override
@@ -67,30 +98,38 @@ class _SearchPageState extends State<SearchPage> {
       ),
       body: Column(
         children: [
-          // Khung nhập từ khóa tìm kiếm dạng Glassmorphism
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: TextField(
-              controller: _searchController,
-              onSubmitted: (_) => _triggerSearch(),
-              style: const TextStyle(color: Colors.white),
-              decoration: InputDecoration(
-                hintText: 'Nhập từ khóa (vd: Machine Learning, Quantum...)',
-                prefixIcon: const Icon(Icons.search_rounded, color: Colors.white70),
-                suffixIcon: IconButton(
-                  icon: const Icon(Icons.arrow_forward_rounded, color: Colors.white),
-                  onPressed: _triggerSearch,
+          ClipRect(
+            child: AnimatedSize(
+              duration: const Duration(milliseconds: 250),
+              curve: Curves.easeInOut,
+              child: SizedBox(
+                height: _isSearchVisible ? 88.0 : 0.0,
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: TextField(
+                    controller: _searchController,
+                    onSubmitted: (_) => _triggerSearch(),
+                    style: const TextStyle(color: Colors.white),
+                    decoration: InputDecoration(
+                      hintText: 'Nhập từ khóa (vd: Machine Learning, Quantum...)',
+                      prefixIcon: const Icon(Icons.search_rounded, color: Colors.white70),
+                      suffixIcon: IconButton(
+                        icon: const Icon(Icons.arrow_forward_rounded, color: Colors.white),
+                        onPressed: _triggerSearch,
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ),
           ),
 
-          // Vùng hiển thị kết quả (Dùng ListenableBuilder lắng nghe cập nhật trạng thái)
+          // Vùng hiển thị kết quả (Dùng ValueListenableBuilder lắng nghe cập nhật trạng thái)
           Expanded(
-            child: ListenableBuilder(
-              listenable: widget.notifier,
-              builder: (context, _) {
-                if (widget.notifier.isLoading) {
+            child: ValueListenableBuilder<SearchState>(
+              valueListenable: widget.notifier.stateNotifier,
+              builder: (context, state, _) {
+                if (state.isLoading) {
                   return const Center(
                     child: CircularProgressIndicator(
                       color: Colors.white,
@@ -98,7 +137,7 @@ class _SearchPageState extends State<SearchPage> {
                   );
                 }
 
-                if (widget.notifier.errorMessage != null) {
+                if (state.errorMessage.isNotEmpty) {
                   return Padding(
                     padding: const EdgeInsets.all(24.0),
                     child: Center(
@@ -119,7 +158,7 @@ class _SearchPageState extends State<SearchPage> {
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              widget.notifier.errorMessage!,
+                              state.errorMessage,
                               style: theme.textTheme.bodyMedium?.copyWith(
                                 color: Colors.white70,
                               ),
@@ -132,7 +171,7 @@ class _SearchPageState extends State<SearchPage> {
                   );
                 }
 
-                final list = widget.notifier.publications;
+                final list = state.publications;
                 if (list.isEmpty) {
                   return Center(
                     child: Column(
@@ -156,11 +195,13 @@ class _SearchPageState extends State<SearchPage> {
                 }
 
                 return ListView.builder(
+                  controller: _scrollController,
                   itemCount: list.length,
                   padding: const EdgeInsets.only(bottom: 24),
                   itemBuilder: (context, index) {
                     final pub = list[index];
                     return PublicationCard(
+                      id: pub.id,
                       title: pub.title,
                       year: pub.publicationYear.toString(),
                       citationCount: pub.citationCount,

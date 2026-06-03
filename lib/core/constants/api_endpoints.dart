@@ -7,9 +7,6 @@ class ApiEndpoints {
   /// URL cơ sở của OpenAlex API
   static const String baseUrl = 'https://api.openalex.org';
 
-  /// Endpoint tìm kiếm các bài viết (Works)
-  static const String worksEndpoint = '/works';
-
   /// Email học thuật của sinh viên FPT (Polite Pool Optimization)
   static String get academicMail =>
       dotenv.get('ACADEMIC_MAIL', fallback: 'your_student_email@fpt.edu.vn');

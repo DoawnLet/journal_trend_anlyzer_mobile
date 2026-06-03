@@ -5,6 +5,7 @@ import 'glass_card.dart';
 /// Sử dụng phong cách GlassCard và bố cục hiển thị đầy đủ thông tin:
 /// Tiêu đề, Năm xuất bản, Số lượt trích dẫn, và Tên tạp chí/nơi công bố.
 class PublicationCard extends StatelessWidget {
+  final String id;
   final String title;
   final String year;
   final int citationCount;
@@ -13,6 +14,7 @@ class PublicationCard extends StatelessWidget {
 
   const PublicationCard({
     super.key,
+    required this.id,
     required this.title,
     required this.year,
     required this.citationCount,
@@ -23,7 +25,7 @@ class PublicationCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 16),
       child: Material(
@@ -49,7 +51,7 @@ class PublicationCard extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 12),
-                
+
                 // Tên Tạp chí / Nhà xuất bản
                 Row(
                   children: [
@@ -61,7 +63,9 @@ class PublicationCard extends StatelessWidget {
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(
-                        journalName.isNotEmpty ? journalName : 'Unknown Journal',
+                        journalName.isNotEmpty
+                            ? journalName
+                            : 'Unknown Journal',
                         style: theme.textTheme.bodyMedium?.copyWith(
                           color: Colors.white70,
                           fontStyle: FontStyle.italic,
@@ -73,14 +77,17 @@ class PublicationCard extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 12),
-                
+
                 // Dòng chứa năm xuất bản và số lượt trích dẫn
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     // Năm xuất bản (Dưới dạng tag chip nhỏ)
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.2),
                         borderRadius: BorderRadius.circular(12),
@@ -103,10 +110,13 @@ class PublicationCard extends StatelessWidget {
                         ],
                       ),
                     ),
-                    
+
                     // Số lượt trích dẫn
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.15),
                         borderRadius: BorderRadius.circular(12),
