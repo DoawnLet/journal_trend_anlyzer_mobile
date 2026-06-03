@@ -57,6 +57,12 @@ class ErrorMiddleware {
 
   /// Bộ xử lý và ghi nhận lỗi bất đồng bộ toàn cục
   static bool _handleAsyncError(Object error, StackTrace stack) {
+    final errorStr = error.toString();
+    if (errorStr.contains('Failed to load font') || errorStr.contains('fonts.gstatic.com')) {
+      // Bỏ qua lỗi tải font của Google Fonts để tránh làm loãng log lỗi hệ thống
+      return true;
+    }
+    
     debugPrint('ErrorMiddleware - Đã bắt được lỗi bất đồng bộ toàn cục: $error');
     // Trả về true để thông báo lỗi đã được xử lý và ngăn chặn sập ứng dụng
     return true;

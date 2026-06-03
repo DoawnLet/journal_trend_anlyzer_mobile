@@ -6,8 +6,7 @@ class SharedState {
   SharedState._();
 
   /// Quản lý từ khóa tìm kiếm chủ đề đang hoạt động toàn cục.
-  /// Mặc định ban đầu là "Artificial Intelligence".
-  static final ValueNotifier<String> activeQueryNotifier = ValueNotifier<String>('Artificial Intelligence');
+  static final ValueNotifier<String> activeQueryNotifier = ValueNotifier<String>('');
 
   /// Quản lý chế độ giao diện sáng/tối (Light/Dark Mode).
   /// Mặc định là ThemeMode.light.

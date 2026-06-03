@@ -8,16 +8,18 @@ class SearchApiService {
   SearchApiService({OpenAlexClient? client}) : _client = client ?? OpenAlexClient();
 
   /// Tìm kiếm danh sách bài báo theo từ khóa (Requirement 4.1 & 4.2)
-  Future<List<Publication>> fetchPublications(String query, {int perPage = 20}) async {
+  /// Nếu từ khóa rỗng, tải danh sách bài báo chung từ /works.
+  Future<List<Publication>> fetchWorks(String query, {int perPage = 20}) async {
     final cleanQuery = query.trim();
-    if (cleanQuery.isEmpty) {
-      return const [];
+    
+    final Map<String, String> queryParams = {
+      'per_page': perPage.toString(),
+    };
+    if (cleanQuery.isNotEmpty) {
+      queryParams['search'] = cleanQuery;
     }
 
-    final data = await _client.get('/publishers', {
-      'search': cleanQuery,
-      'per_page': perPage.toString(),
-    });
+    final data = await _client.get('/works', queryParams);
 
     final List results = data['results'] ?? [];
     return results.map((json) => Publication.fromJson(json)).toList();

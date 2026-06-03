@@ -160,6 +160,7 @@ class DashboardPage extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   PublicationCard(
+                    id: notifier.mostInfluentialPaper!.id,
                     title: notifier.mostInfluentialPaper!.title,
                     year: notifier.mostInfluentialPaper!.publicationYear.toString(),
                     citationCount: notifier.mostInfluentialPaper!.citationCount,
