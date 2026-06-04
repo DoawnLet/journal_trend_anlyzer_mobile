@@ -30,14 +30,25 @@ class _SearchPageState extends State<SearchPage> {
     _searchController = TextEditingController(text: SharedState.activeQueryNotifier.value);
     _scrollController = ScrollController();
     _scrollController.addListener(_scrollListener);
+    SharedState.activeQueryNotifier.addListener(_onActiveQueryChanged);
   }
 
   @override
   void dispose() {
+    SharedState.activeQueryNotifier.removeListener(_onActiveQueryChanged);
     _searchController.dispose();
     _scrollController.removeListener(_scrollListener);
     _scrollController.dispose();
     super.dispose();
+  }
+
+  void _onActiveQueryChanged() {
+    if (mounted) {
+      final newValue = SharedState.activeQueryNotifier.value;
+      if (_searchController.text != newValue) {
+        _searchController.text = newValue;
+      }
+    }
   }
 
   void _scrollListener() {
@@ -122,6 +133,38 @@ class _SearchPageState extends State<SearchPage> {
                 ),
               ),
             ),
+          ),
+          
+          // Active Filter Chips
+          ValueListenableBuilder<SearchState>(
+            valueListenable: widget.notifier.stateNotifier,
+            builder: (context, state, _) {
+              if (state.selectedPublisherName == null) {
+                return const SizedBox.shrink();
+              }
+              return Padding(
+                padding: const EdgeInsets.only(left: 16.0, right: 16.0, bottom: 8.0),
+                child: Row(
+                  children: [
+                    InputChip(
+                      label: Text(
+                        'Nhà xuất bản: ${state.selectedPublisherName}',
+                        style: const TextStyle(color: Colors.white, fontSize: 12),
+                      ),
+                      backgroundColor: theme.colorScheme.primary.withOpacity(0.2),
+                      deleteIcon: const Icon(Icons.close_rounded, size: 16, color: Colors.white70),
+                      onDeleted: () {
+                        widget.notifier.clearPublisherFilter();
+                      },
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        side: BorderSide(color: theme.colorScheme.primary.withOpacity(0.4)),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
           ),
 
           // Vùng hiển thị kết quả (Dùng ValueListenableBuilder lắng nghe cập nhật trạng thái)

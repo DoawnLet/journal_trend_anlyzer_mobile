@@ -11,4 +11,7 @@ class SharedState {
   /// Quản lý chế độ giao diện sáng/tối (Light/Dark Mode).
   /// Mặc định là ThemeMode.light.
   static final ValueNotifier<ThemeMode> themeModeNotifier = ValueNotifier<ThemeMode>(ThemeMode.light);
+
+  /// Quản lý Tab đang hoạt động toàn cục (0: Trang chủ, 1: Tìm kiếm, 2: Xu hướng, 3: Dashboard).
+  static final ValueNotifier<int> activeTabNotifier = ValueNotifier<int>(0);
 }
