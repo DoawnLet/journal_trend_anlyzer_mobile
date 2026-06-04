@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-import '../../core/theme/app_colors.dart';
-import '../widgets/publication_card.dart';
-import '../widgets/glass_card.dart';
+import '../widgets/search_filter_bottom_sheet.dart';
+import '../widgets/search_input_field.dart';
+import '../widgets/search_active_filters.dart';
+import '../widgets/search_results_list.dart';
 import '../state_management/search_notifier.dart';
 import '../state_management/shared_state.dart';
-import 'detail_page.dart';
 
 /// Màn hình tìm kiếm đề tài (Search Page).
 /// Cung cấp ô nhập liệu và hiển thị danh sách kết quả bài viết từ OpenAlex API.
@@ -83,14 +83,26 @@ class _SearchPageState extends State<SearchPage> {
     SharedState.activeQueryNotifier.value = query;
   }
 
+  void _showFilterBottomSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => SearchFilterBottomSheet(notifier: widget.notifier),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Tìm Kiếm Đề Tài'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.filter_list_rounded, color: Colors.white),
+            tooltip: 'Bộ lọc & Sắp xếp',
+            onPressed: () => _showFilterBottomSheet(context),
+          ),
           ListenableBuilder(
             listenable: SharedState.themeModeNotifier,
             builder: (context, _) {
@@ -117,18 +129,9 @@ class _SearchPageState extends State<SearchPage> {
                 height: _isSearchVisible ? 88.0 : 0.0,
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
-                  child: TextField(
+                  child: SearchInputField(
                     controller: _searchController,
-                    onSubmitted: (_) => _triggerSearch(),
-                    style: const TextStyle(color: Colors.white),
-                    decoration: InputDecoration(
-                      hintText: 'Nhập từ khóa (vd: Machine Learning, Quantum...)',
-                      prefixIcon: const Icon(Icons.search_rounded, color: Colors.white70),
-                      suffixIcon: IconButton(
-                        icon: const Icon(Icons.arrow_forward_rounded, color: Colors.white),
-                        onPressed: _triggerSearch,
-                      ),
-                    ),
+                    onSearchTriggered: _triggerSearch,
                   ),
                 ),
               ),
@@ -136,132 +139,13 @@ class _SearchPageState extends State<SearchPage> {
           ),
           
           // Active Filter Chips
-          ValueListenableBuilder<SearchState>(
-            valueListenable: widget.notifier.stateNotifier,
-            builder: (context, state, _) {
-              if (state.selectedPublisherName == null) {
-                return const SizedBox.shrink();
-              }
-              return Padding(
-                padding: const EdgeInsets.only(left: 16.0, right: 16.0, bottom: 8.0),
-                child: Row(
-                  children: [
-                    InputChip(
-                      label: Text(
-                        'Nhà xuất bản: ${state.selectedPublisherName}',
-                        style: const TextStyle(color: Colors.white, fontSize: 12),
-                      ),
-                      backgroundColor: theme.colorScheme.primary.withOpacity(0.2),
-                      deleteIcon: const Icon(Icons.close_rounded, size: 16, color: Colors.white70),
-                      onDeleted: () {
-                        widget.notifier.clearPublisherFilter();
-                      },
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        side: BorderSide(color: theme.colorScheme.primary.withOpacity(0.4)),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
+          SearchActiveFilters(notifier: widget.notifier),
 
-          // Vùng hiển thị kết quả (Dùng ValueListenableBuilder lắng nghe cập nhật trạng thái)
+          // Vùng hiển thị kết quả
           Expanded(
-            child: ValueListenableBuilder<SearchState>(
-              valueListenable: widget.notifier.stateNotifier,
-              builder: (context, state, _) {
-                if (state.isLoading) {
-                  return const Center(
-                    child: CircularProgressIndicator(
-                      color: Colors.white,
-                    ),
-                  );
-                }
-
-                if (state.errorMessage.isNotEmpty) {
-                  return Padding(
-                    padding: const EdgeInsets.all(24.0),
-                    child: Center(
-                      child: GlassCard(
-                        color: AppColors.error.withOpacity(0.15),
-                        borderColor: AppColors.error.withOpacity(0.3),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.error_outline_rounded, color: AppColors.error, size: 48),
-                            const SizedBox(height: 12),
-                            Text(
-                              'Đã xảy ra lỗi',
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              state.errorMessage,
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                color: Colors.white70,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  );
-                }
-
-                final list = state.publications;
-                if (list.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.find_in_page_rounded,
-                          size: 64,
-                          color: Colors.white.withOpacity(0.6),
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'Không tìm thấy kết quả nào.',
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            color: Colors.white,
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-
-                return ListView.builder(
-                  controller: _scrollController,
-                  itemCount: list.length,
-                  padding: const EdgeInsets.only(bottom: 24),
-                  itemBuilder: (context, index) {
-                    final pub = list[index];
-                    return PublicationCard(
-                      id: pub.id,
-                      title: pub.title,
-                      year: pub.publicationYear.toString(),
-                      citationCount: pub.citationCount,
-                      journalName: pub.journalName,
-                      onTap: () {
-                        // Điều hướng sang trang chi tiết
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => DetailPage(publication: pub),
-                          ),
-                        );
-                      },
-                    );
-                  },
-                );
-              },
+            child: SearchResultsList(
+              notifier: widget.notifier,
+              scrollController: _scrollController,
             ),
           ),
         ],

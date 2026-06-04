@@ -489,7 +489,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  /// Dựng Tabs kiến trúc hiển thị các Nhà xuất bản & Viện trường tiêu biểu
+  /// Dựng Tabs kiến trúc hiển thị các Tác giả & Viện trường tiêu biểu
   Widget _buildHubsTabs(ThemeData theme, HomeState state) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -505,7 +505,7 @@ class _HomePageState extends State<HomePage> {
               dividerColor: Colors.white.withOpacity(0.06),
               labelStyle: const TextStyle(fontWeight: FontWeight.bold),
               tabs: const [
-                Tab(text: 'Nhà xuất bản', icon: Icon(Icons.menu_book_rounded, size: 18)),
+                Tab(text: 'Tác giả', icon: Icon(Icons.person_rounded, size: 18)),
                 Tab(text: 'Viện & Trường', icon: Icon(Icons.school_rounded, size: 18)),
               ],
             ),
@@ -513,7 +513,7 @@ class _HomePageState extends State<HomePage> {
             Expanded(
               child: TabBarView(
                 children: [
-                  _buildPublishersTab(theme, state),
+                  _buildAuthorsTab(theme, state),
                   _buildInstitutionsTab(theme, state),
                 ],
               ),
@@ -524,42 +524,63 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  /// Tab Danh sách các nhà xuất bản hàng đầu
-  Widget _buildPublishersTab(ThemeData theme, HomeState state) {
+  /// Tab Danh sách các tác giả hàng đầu
+  Widget _buildAuthorsTab(ThemeData theme, HomeState state) {
+    if (state.isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(
+          color: Colors.white,
+        ),
+      );
+    }
+    
+    if (state.authors.isEmpty) {
+      return const Center(
+        child: Text(
+          'Không có dữ liệu tác giả.',
+          style: TextStyle(color: Colors.white70),
+        ),
+      );
+    }
+
     return ListView.builder(
       physics: const NeverScrollableScrollPhysics(),
       padding: EdgeInsets.zero,
-      itemCount: state.publishers.length,
+      itemCount: state.authors.length > 5 ? 5 : state.authors.length,
       itemBuilder: (context, index) {
-        final pub = state.publishers[index];
+        final author = state.authors[index];
         return Card(
           color: Colors.white.withOpacity(0.03),
           margin: const EdgeInsets.symmetric(vertical: 4),
           child: ListTile(
             dense: true,
             onTap: () {
-              widget.searchNotifier.setPublisherFilter(pub.id, pub.name);
+              widget.searchNotifier.setAuthorFilter(author.id, author.name);
               SharedState.activeTabNotifier.value = 1;
             },
             leading: const CircleAvatar(
               backgroundColor: Colors.white10,
               radius: 14,
-              child: Icon(Icons.business_rounded, color: Colors.white70, size: 14),
+              child: Icon(Icons.person_rounded, color: Colors.white70, size: 14),
             ),
             title: Text(
-              pub.name,
+              author.name,
               style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
             subtitle: Text(
-              pub.headquarters,
+              author.institution,
               style: const TextStyle(color: Colors.white54, fontSize: 10),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
             trailing: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  pub.worksCount,
+                  author.worksCount,
                   style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                 ),
                 const Text(

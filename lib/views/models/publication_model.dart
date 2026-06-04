@@ -8,6 +8,8 @@ class Publication {
   final String journalName;
   final List<String> authors;
   final String abstractText;
+  final List<String> concepts;
+  final List<String> topics;
 
   const Publication({
     required this.id,
@@ -18,6 +20,8 @@ class Publication {
     required this.journalName,
     required this.authors,
     required this.abstractText,
+    required this.concepts,
+    required this.topics,
   });
 
   /// Khởi tạo đối tượng Publication từ cấu trúc JSON trả về của OpenAlex API.
@@ -56,6 +60,8 @@ class Publication {
         journalName: 'Nhà xuất bản (QG: $country)',
         authors: alternateNames.isNotEmpty ? alternateNames : ['OpenAlex Publisher'],
         abstractText: desc,
+        concepts: const [],
+        topics: const [],
       );
     }
 
@@ -87,6 +93,38 @@ class Publication {
       parsedAbstract = _reconstructAbstract(index);
     }
 
+    // 4. Phân tích Concepts
+    final List<String> parsedConcepts = [];
+    if (json['concepts'] is List) {
+      for (var concept in json['concepts']) {
+        final name = concept['display_name'];
+        if (name != null) {
+          parsedConcepts.add(name.toString());
+        }
+      }
+    }
+
+    // 5. Phân tích Topics
+    final List<String> parsedTopics = [];
+    if (json['topics'] is List) {
+      for (var topic in json['topics']) {
+        final name = topic['display_name'];
+        if (name != null) {
+          parsedTopics.add(name.toString());
+        }
+      }
+    }
+    final primaryTopic = json['primary_topic'];
+    if (primaryTopic is Map) {
+      final name = primaryTopic['display_name'];
+      if (name != null) {
+        final nameStr = name.toString();
+        if (!parsedTopics.contains(nameStr)) {
+          parsedTopics.insert(0, nameStr);
+        }
+      }
+    }
+
     return Publication(
       id: json['id'] ?? '',
       title: json['title'] ?? 'Untitled Publication',
@@ -96,6 +134,8 @@ class Publication {
       journalName: parsedJournal,
       authors: parsedAuthors,
       abstractText: parsedAbstract,
+      concepts: parsedConcepts,
+      topics: parsedTopics,
     );
   }
 

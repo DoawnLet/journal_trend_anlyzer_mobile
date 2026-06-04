@@ -9,16 +9,14 @@ class SearchApiService {
 
   /// Tìm kiếm danh sách bài báo theo từ khóa (Requirement 4.1 & 4.2)
   /// Nếu từ khóa rỗng, tải danh sách bài báo chung từ /works.
-  Future<List<Publication>> fetchWorks({String query = '', String? publisherId, int perPage = 20}) async {
+  Future<List<Publication>> fetchWorks({String query = '', int perPage = 20}) async {
     final cleanQuery = query.trim();
     
     final Map<String, String> queryParams = {
       'per_page': perPage.toString(),
     };
 
-    if (publisherId != null && publisherId.isNotEmpty) {
-      queryParams['filter'] = 'primary_location.source.host_organization:$publisherId';
-    } else if (cleanQuery.isNotEmpty) {
+    if (cleanQuery.isNotEmpty) {
       queryParams['search'] = cleanQuery;
     }
 

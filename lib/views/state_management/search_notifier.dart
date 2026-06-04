@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/utils/error_translator.dart';
 import '../models/publication_model.dart';
-import '../services/search_api_service.dart';
+import '../services/openalex_api_service.dart';
 import 'shared_state.dart';
 
 // Class gom cụm trạng thái
@@ -10,16 +10,26 @@ class SearchState {
   final bool isLoading;
   final String errorMessage;
   final String searchQuery;
-  final String? selectedPublisherId;
-  final String? selectedPublisherName;
+  final String? selectedAuthorId;
+  final String? selectedAuthorName;
+  final String? selectedConceptId;
+  final String? selectedConceptName;
+  final String? selectedTopicId;
+  final String? selectedTopicName;
+  final String? sortBy; // 'publication_date:desc', 'publication_date:asc', or null
 
   SearchState({
     this.publications = const [],
     this.isLoading = false,
     this.errorMessage = '',
     this.searchQuery = '',
-    this.selectedPublisherId,
-    this.selectedPublisherName,
+    this.selectedAuthorId,
+    this.selectedAuthorName,
+    this.selectedConceptId,
+    this.selectedConceptName,
+    this.selectedTopicId,
+    this.selectedTopicName,
+    this.sortBy,
   });
 
   SearchState copyWith({
@@ -27,24 +37,39 @@ class SearchState {
     bool? isLoading,
     String? errorMessage,
     String? searchQuery,
-    String? selectedPublisherId,
-    String? selectedPublisherName,
-    bool clearPublisherId = false,
-    bool clearPublisherName = false,
+    String? selectedAuthorId,
+    String? selectedAuthorName,
+    String? selectedConceptId,
+    String? selectedConceptName,
+    String? selectedTopicId,
+    String? selectedTopicName,
+    String? sortBy,
+    bool clearAuthorId = false,
+    bool clearAuthorName = false,
+    bool clearConceptId = false,
+    bool clearConceptName = false,
+    bool clearTopicId = false,
+    bool clearTopicName = false,
+    bool clearSortBy = false,
   }) {
     return SearchState(
       publications: publications ?? this.publications,
       isLoading: isLoading ?? this.isLoading,
       errorMessage: errorMessage ?? this.errorMessage,
       searchQuery: searchQuery ?? this.searchQuery,
-      selectedPublisherId: clearPublisherId ? null : (selectedPublisherId ?? this.selectedPublisherId),
-      selectedPublisherName: clearPublisherName ? null : (selectedPublisherName ?? this.selectedPublisherName),
+      selectedAuthorId: clearAuthorId ? null : (selectedAuthorId ?? this.selectedAuthorId),
+      selectedAuthorName: clearAuthorName ? null : (selectedAuthorName ?? this.selectedAuthorName),
+      selectedConceptId: clearConceptId ? null : (selectedConceptId ?? this.selectedConceptId),
+      selectedConceptName: clearConceptName ? null : (selectedConceptName ?? this.selectedConceptName),
+      selectedTopicId: clearTopicId ? null : (selectedTopicId ?? this.selectedTopicId),
+      selectedTopicName: clearTopicName ? null : (selectedTopicName ?? this.selectedTopicName),
+      sortBy: clearSortBy ? null : (sortBy ?? this.sortBy),
     );
   }
 }
 
 class SearchNotifier {
-  final SearchApiService _apiService = SearchApiService();
+  final OpenAlexApiService _openAlexApiService = OpenAlexApiService();
   
   // Biến trạng thái duy nhất dùng để lắng nghe ở UI
   final ValueNotifier<SearchState> stateNotifier = ValueNotifier(SearchState());
@@ -62,48 +87,26 @@ class SearchNotifier {
   void _onQueryChanged() {
     final newQuery = SharedState.activeQueryNotifier.value;
     
-    if (newQuery.startsWith('Publisher: ')) {
-      final name = newQuery.substring('Publisher: '.length).trim();
-      if (state.selectedPublisherName == name) {
-        return; // Đã được xử lý bởi setPublisherFilter
-      }
-      
-      // Khôi phục ID nếu được thay đổi trực tiếp từ bên ngoài
-      String? pubId;
-      switch (name.toLowerCase()) {
-        case 'elsevier':
-          pubId = 'https://openalex.org/P4310320990';
-          break;
-        case 'springer nature':
-          pubId = 'https://openalex.org/P4310319965';
-          break;
-        case 'wiley-blackwell':
-        case 'wiley':
-          pubId = 'https://openalex.org/P4310320595';
-          break;
-        case 'ieee':
-          pubId = 'https://openalex.org/P4310319808';
-          break;
-        case 'taylor & francis':
-          pubId = 'https://openalex.org/P4310320547';
-          break;
-      }
-      if (pubId != null) {
-        state = state.copyWith(
-          selectedPublisherId: pubId,
-          selectedPublisherName: name,
-          searchQuery: '',
-        );
-        executeWorksFetchPipeline();
+    if (newQuery.startsWith('Author: ')) {
+      final name = newQuery.substring('Author: '.length).trim();
+      if (state.selectedAuthorName == name) {
+        return; // Đã được xử lý bởi setAuthorFilter
       }
       return;
     }
 
-    if (state.selectedPublisherId != null || state.searchQuery != newQuery) {
+    if (state.selectedAuthorId != null || 
+        state.selectedConceptId != null ||
+        state.selectedTopicId != null ||
+        state.searchQuery != newQuery) {
       state = state.copyWith(
         searchQuery: newQuery,
-        clearPublisherId: true,
-        clearPublisherName: true,
+        clearAuthorId: true,
+        clearAuthorName: true,
+        clearConceptId: true,
+        clearConceptName: true,
+        clearTopicId: true,
+        clearTopicName: true,
       );
       executeWorksFetchPipeline();
     }
@@ -117,11 +120,15 @@ class SearchNotifier {
     );
 
     try {
-      // Gọi Service để kết nối API OpenAlex
-      final parsedPublications = await _apiService.fetchWorks(
+      final data = await _openAlexApiService.getWorksFiltered(
         query: state.searchQuery,
-        publisherId: state.selectedPublisherId,
+        authorId: state.selectedAuthorId,
+        conceptId: state.selectedConceptId,
+        topicId: state.selectedTopicId,
+        sortBy: state.sortBy,
       );
+      final List results = data['results'] ?? [];
+      final parsedPublications = results.map((json) => Publication.fromJson(json)).toList();
 
       // Cập nhật trạng thái thành công
       state = state.copyWith(
@@ -142,23 +149,69 @@ class SearchNotifier {
     SharedState.activeQueryNotifier.value = keyword;
   }
 
-  void setPublisherFilter(String id, String name) {
+  void setAuthorFilter(String id, String name) {
     state = state.copyWith(
-      selectedPublisherId: id,
-      selectedPublisherName: name,
+      selectedAuthorId: id,
+      selectedAuthorName: name,
       searchQuery: '', // Flush traditional query strings to avoid conflict
     );
-    SharedState.activeQueryNotifier.value = 'Publisher: $name';
+    SharedState.activeQueryNotifier.value = 'Author: $name';
     executeWorksFetchPipeline(); // Trigger immediate HTTP dispatch
   }
 
-  void clearPublisherFilter() {
+  void clearAuthorFilter() {
     state = state.copyWith(
-      clearPublisherId: true,
-      clearPublisherName: true,
+      clearAuthorId: true,
+      clearAuthorName: true,
       searchQuery: '',
     );
     SharedState.activeQueryNotifier.value = '';
+    executeWorksFetchPipeline();
+  }
+
+  void setConceptFilter(String id, String name) {
+    state = state.copyWith(
+      selectedConceptId: id,
+      selectedConceptName: name,
+    );
+    executeWorksFetchPipeline();
+  }
+
+  void clearConceptFilter() {
+    state = state.copyWith(
+      clearConceptId: true,
+      clearConceptName: true,
+    );
+    executeWorksFetchPipeline();
+  }
+
+  void setTopicFilter(String id, String name) {
+    state = state.copyWith(
+      selectedTopicId: id,
+      selectedTopicName: name,
+    );
+    executeWorksFetchPipeline();
+  }
+
+  void clearTopicFilter() {
+    state = state.copyWith(
+      clearTopicId: true,
+      clearTopicName: true,
+    );
+    executeWorksFetchPipeline();
+  }
+
+  void setSortBy(String? sort) {
+    state = state.copyWith(
+      sortBy: sort,
+    );
+    executeWorksFetchPipeline();
+  }
+
+  void clearSortBy() {
+    state = state.copyWith(
+      clearSortBy: true,
+    );
     executeWorksFetchPipeline();
   }
 

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/theme/app_colors.dart';
-import '../../core/utils/formatters.dart';
 import '../widgets/glass_card.dart';
 import '../models/publication_model.dart';
 
@@ -44,7 +43,6 @@ class DetailPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final String displayAuthors = Formatters.formatAuthors(publication.authors);
 
     return Scaffold(
       appBar: AppBar(
@@ -73,8 +71,12 @@ class DetailPage extends StatelessWidget {
             GlassCard(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(Icons.person_outline_rounded, color: Colors.white),
+                  const Padding(
+                    padding: EdgeInsets.only(top: 2.0),
+                    child: Icon(Icons.people_outline_rounded, color: Colors.white),
+                  ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
@@ -87,14 +89,37 @@ class DetailPage extends StatelessWidget {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        const SizedBox(height: 2),
-                        Text(
-                          displayAuthors,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
+                        const SizedBox(height: 8),
+                        if (publication.authors.isEmpty)
+                          Text(
+                            'Không rõ tác giả',
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: Colors.white70,
+                              fontStyle: FontStyle.italic,
+                            ),
+                          )
+                        else
+                          Wrap(
+                            spacing: 8.0,
+                            runSpacing: 6.0,
+                            children: publication.authors.map((author) {
+                              return Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.08),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(color: Colors.white.withOpacity(0.12)),
+                                ),
+                                child: Text(
+                                  author,
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              );
+                            }).toList(),
                           ),
-                        ),
                       ],
                     ),
                   ),
@@ -135,7 +160,61 @@ class DetailPage extends StatelessWidget {
                   minimumSize: const Size.fromHeight(50),
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
+            ],
+
+            // --- Khái niệm (Concepts) ---
+            if (publication.concepts.isNotEmpty) ...[
+              Text(
+                'Khái niệm (Concepts)',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8.0,
+                runSpacing: 6.0,
+                children: publication.concepts.map((concept) {
+                  return Chip(
+                    backgroundColor: Colors.white.withOpacity(0.06),
+                    side: BorderSide(color: Colors.white.withOpacity(0.1)),
+                    label: Text(
+                      concept,
+                      style: const TextStyle(color: Colors.white70, fontSize: 12),
+                    ),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 20),
+            ],
+
+            // --- Chủ đề (Topics) ---
+            if (publication.topics.isNotEmpty) ...[
+              Text(
+                'Chủ đề (Topics)',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8.0,
+                runSpacing: 6.0,
+                children: publication.topics.map((topic) {
+                  return Chip(
+                    backgroundColor: Colors.white.withOpacity(0.06),
+                    side: BorderSide(color: Colors.white.withOpacity(0.1)),
+                    label: Text(
+                      topic,
+                      style: const TextStyle(color: Colors.white70, fontSize: 12),
+                    ),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 20),
             ],
 
             // --- Nội dung Tóm tắt (Abstract) ---

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/openalex_api_service.dart';
 
 class FieldItem {
   final String name;
@@ -54,17 +55,19 @@ class InstitutionItem {
   });
 }
 
-class PublisherItem {
+class AuthorItem {
   final String id;
   final String name;
-  final String headquarters;
+  final String institution;
   final String worksCount;
+  final String citedByCount;
 
-  const PublisherItem({
+  const AuthorItem({
     required this.id,
     required this.name,
-    required this.headquarters,
+    required this.institution,
     required this.worksCount,
+    required this.citedByCount,
   });
 }
 
@@ -74,20 +77,24 @@ class HomeState {
   final List<FieldItem> activeFields;
   final List<GeographyItem> geographyLeaderboard;
   final List<SDGItem> sdgs;
-  final List<PublisherItem> publishers;
+  final List<AuthorItem> authors;
   final List<InstitutionItem> institutions;
   final bool isLoading;
 
   HomeState({
     this.selectedDomain = 'Khoa học Vật lý',
     this.domains = const ['Khoa học Vật lý', 'Khoa học Y học', 'Khoa học Xã hội', 'Khoa học Sự sống'],
-    this.activeFields = const [],
-    this.geographyLeaderboard = const [],
-    this.sdgs = const [],
-    this.publishers = const [],
-    this.institutions = const [],
+    List<FieldItem>? activeFields,
+    List<GeographyItem>? geographyLeaderboard,
+    List<SDGItem>? sdgs,
+    List<AuthorItem>? authors,
+    List<InstitutionItem>? institutions,
     this.isLoading = false,
-  });
+  }) : activeFields = activeFields ?? const <FieldItem>[],
+       geographyLeaderboard = geographyLeaderboard ?? const <GeographyItem>[],
+       sdgs = sdgs ?? const <SDGItem>[],
+       authors = authors ?? const <AuthorItem>[],
+       institutions = institutions ?? const <InstitutionItem>[];
 
   HomeState copyWith({
     String? selectedDomain,
@@ -95,7 +102,7 @@ class HomeState {
     List<FieldItem>? activeFields,
     List<GeographyItem>? geographyLeaderboard,
     List<SDGItem>? sdgs,
-    List<PublisherItem>? publishers,
+    List<AuthorItem>? authors,
     List<InstitutionItem>? institutions,
     bool? isLoading,
   }) {
@@ -105,7 +112,7 @@ class HomeState {
       activeFields: activeFields ?? this.activeFields,
       geographyLeaderboard: geographyLeaderboard ?? this.geographyLeaderboard,
       sdgs: sdgs ?? this.sdgs,
-      publishers: publishers ?? this.publishers,
+      authors: authors ?? this.authors,
       institutions: institutions ?? this.institutions,
       isLoading: isLoading ?? this.isLoading,
     );
@@ -145,8 +152,11 @@ class HomeNotifier {
     ],
   };
 
+  final OpenAlexApiService _apiService = OpenAlexApiService();
+
   HomeNotifier() {
     _initData();
+    fetchTopAuthors();
   }
 
   void _initData() {
@@ -169,13 +179,7 @@ class HomeNotifier {
         SDGItem(number: 13, title: 'Climate Action', color: Color(0xFF3F7E44), icon: Icons.thermostat_rounded),
         SDGItem(number: 15, title: 'Life on Land', color: Color(0xFF56C02B), icon: Icons.grass_rounded),
       ],
-      publishers: const [
-        PublisherItem(id: 'https://openalex.org/P4310320990', name: 'Elsevier', headquarters: 'Amsterdam, Hà Lan', worksCount: '18.2M'),
-        PublisherItem(id: 'https://openalex.org/P4310319965', name: 'Springer Nature', headquarters: 'Berlin, Đức', worksCount: '12.4M'),
-        PublisherItem(id: 'https://openalex.org/P4310320595', name: 'Wiley-Blackwell', headquarters: 'Hoboken, Hoa Kỳ', worksCount: '7.1M'),
-        PublisherItem(id: 'https://openalex.org/P4310319808', name: 'IEEE', headquarters: 'New York, Hoa Kỳ', worksCount: '5.3M'),
-        PublisherItem(id: 'https://openalex.org/P4310320547', name: 'Taylor & Francis', headquarters: 'Oxford, Vương Quốc Anh', worksCount: '4.9M'),
-      ],
+      authors: const <AuthorItem>[],
       institutions: const [
         InstitutionItem(name: 'Harvard University', country: 'Hoa Kỳ', type: 'Trường Đại học', worksCount: '820K'),
         InstitutionItem(name: 'Stanford University', country: 'Hoa Kỳ', type: 'Trường Đại học', worksCount: '540K'),
@@ -184,6 +188,50 @@ class HomeNotifier {
         InstitutionItem(name: 'Tsinghua University', country: 'Trung Quốc', type: 'Trường Đại học', worksCount: '380K'),
       ],
     );
+  }
+
+  Future<void> fetchTopAuthors() async {
+    stateNotifier.value = stateNotifier.value.copyWith(isLoading: true);
+    try {
+      final data = await _apiService.getTopAuthors();
+      final List results = data['results'] ?? [];
+      
+      final List<AuthorItem> fetchedAuthors = results.map<AuthorItem>((item) {
+        final lastInst = item['last_known_institution'];
+        final instName = lastInst != null ? (lastInst['display_name'] ?? 'N/A') : 'N/A';
+        final country = lastInst != null ? (lastInst['country_code'] ?? '') : '';
+        final fullInst = country.isNotEmpty ? '$instName ($country)' : instName;
+        
+        final works = item['works_count']?.toString() ?? '0';
+        final cited = item['cited_by_count']?.toString() ?? '0';
+        
+        String formattedWorks = works;
+        final intWorks = int.tryParse(works) ?? 0;
+        if (intWorks >= 1000000) {
+          formattedWorks = '${(intWorks / 1000000).toStringAsFixed(1)}M';
+        } else if (intWorks >= 1000) {
+          formattedWorks = '${(intWorks / 1000).toStringAsFixed(1)}K';
+        }
+
+        return AuthorItem(
+          id: item['id'] ?? '',
+          name: item['display_name'] ?? 'N/A',
+          institution: fullInst,
+          worksCount: formattedWorks,
+          citedByCount: cited,
+        );
+      }).toList();
+
+      stateNotifier.value = stateNotifier.value.copyWith(
+        authors: fetchedAuthors,
+        isLoading: false,
+      );
+    } catch (e) {
+      stateNotifier.value = stateNotifier.value.copyWith(
+        isLoading: false,
+      );
+      debugPrint('Failed to load top authors: $e');
+    }
   }
 
   /// Thay đổi Domain đang hiển thị
