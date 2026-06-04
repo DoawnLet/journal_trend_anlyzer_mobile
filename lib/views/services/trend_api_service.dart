@@ -7,7 +7,7 @@ class TrendApiService {
 
   TrendApiService({OpenAlexClient? client}) : _client = client ?? OpenAlexClient();
 
-  /// Gom nhóm số lượng ấn phẩm theo năm từ API (Requirement 4.3)
+  /// Gom nhóm số lượng bài báo theo năm từ API (Requirement 4.3)
   Future<Map<int, int>> fetchPublicationsGroupByYear(String query) async {
     final cleanQuery = query.trim();
     if (cleanQuery.isEmpty) {

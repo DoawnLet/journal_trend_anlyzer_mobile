@@ -10,7 +10,7 @@ import '../state_management/shared_state.dart';
 import 'detail_page.dart';
 
 /// Màn hình Biểu đồ xu hướng (Trend Analysis Page).
-/// Trực quan hóa số lượng ấn phẩm qua các năm và hiển thị xếp hạng
+/// Trực quan hóa số lượng bài báo qua các năm và hiển thị xếp hạng
 /// các bài báo nổi tiếng nhất, tạp chí xuất sắc nhất, và tác giả tiêu biểu.
 class TrendPage extends StatelessWidget {
   final TrendNotifier notifier;

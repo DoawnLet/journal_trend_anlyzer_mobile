@@ -4,11 +4,12 @@ import '../../core/utils/formatters.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/analytic_box.dart';
 import '../widgets/publication_card.dart';
+import '../widgets/works_list_bottom_sheet.dart';
 import '../state_management/dashboard_notifier.dart';
 import '../state_management/shared_state.dart';
 import 'detail_page.dart';
 
-/// Màn hình Bảng điều khiển (Research Dashboard Page).
+/// Màn hình Phân tích tổng quan (Research Dashboard Page).
 /// Tổng hợp và trực quan hóa các chỉ số thống kê vĩ mô của chủ đề nghiên cứu:
 /// Tổng sản lượng, Chỉ số trích dẫn trung bình, Năm bùng nổ, Tác giả/Tạp chí hàng đầu.
 class DashboardPage extends StatelessWidget {
@@ -22,7 +23,7 @@ class DashboardPage extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Bảng Điều Khiển Dashboard'),
+        title: const Text('Phân Tích Tổng Quan'),
         actions: [
           ListenableBuilder(
             listenable: SharedState.themeModeNotifier,
@@ -65,11 +66,23 @@ class DashboardPage extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // --- Tiêu đề chủ đề đang hoạt động ---
-                Text(
-                  'Chủ đề: "${SharedState.activeQueryNotifier.value.isEmpty ? 'Artificial Intelligence (Mặc định)' : SharedState.activeQueryNotifier.value}"',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
+                RichText(
+                  text: TextSpan(
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      color: Colors.white70,
+                    ),
+                    children: [
+                      const TextSpan(text: 'bạn đang thực hiện phân tích theo từ khóa: '),
+                      TextSpan(
+                        text: SharedState.activeQueryNotifier.value.isEmpty
+                            ? 'Artificial Intelligence'
+                            : SharedState.activeQueryNotifier.value,
+                        style: const TextStyle(
+                          color: Color(0xFF80CBC4),
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -128,6 +141,25 @@ class DashboardPage extends StatelessWidget {
                   subtitle: 'Đóng góp ${notifier.topJournalCount} bài báo khoa học',
                   icon: Icons.menu_book_rounded,
                   iconColor: const Color(0xFF80CBC4),
+                  onTap: () {
+                    if (notifier.topJournalName == 'Không có dữ liệu' ||
+                        notifier.topJournalName == 'N/A' ||
+                        notifier.topJournalName.isEmpty) {
+                      return;
+                    }
+                    final journalPubs = notifier.publications
+                        .where((pub) => pub.journalName == notifier.topJournalName)
+                        .toList();
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      backgroundColor: Colors.transparent,
+                      builder: (context) => WorksListBottomSheet(
+                        title: 'Bài viết từ tạp chí:\n${notifier.topJournalName}',
+                        publications: journalPubs,
+                      ),
+                    );
+                  },
                 ),
                 const SizedBox(height: 16),
 
@@ -146,13 +178,31 @@ class DashboardPage extends StatelessWidget {
                   subtitle: 'Số lượng tác phẩm: ${notifier.topAuthorCount} bài viết',
                   icon: Icons.person_pin_rounded,
                   iconColor: const Color(0xFF80CBC4),
+                  onTap: () {
+                    if (notifier.topAuthorName == 'Không có dữ liệu' ||
+                        notifier.topAuthorName == 'N/A' ||
+                        notifier.topAuthorName.isEmpty) {
+                      return;
+                    }
+                    final authorPubs = notifier.publications
+                        .where((pub) => pub.authors.contains(notifier.topAuthorName))
+                        .toList();
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      backgroundColor: Colors.transparent,
+                      builder: (context) => WorksListBottomSheet(
+                        title: 'Bài viết của tác giả:\n${notifier.topAuthorName}',
+                        publications: authorPubs,
+                      ),
+                    );
+                  },
                 ),
                 const SizedBox(height: 24),
 
-                // --- 4. Khối hiển thị Outlier: Bài báo ảnh hưởng nhất ---
                 if (notifier.mostInfluentialPaper != null) ...[
                   Text(
-                    'Ấn phẩm có sức ảnh hưởng nhất',
+                    'Bài báo có sức ảnh hưởng nhất',
                     style: theme.textTheme.titleLarge?.copyWith(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
@@ -189,44 +239,60 @@ class DashboardPage extends StatelessWidget {
     required String subtitle,
     required IconData icon,
     required Color iconColor,
+    VoidCallback? onTap,
   }) {
-    return GlassCard(
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: iconColor.withOpacity(0.18),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: iconColor, size: 24),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: onTap,
+        child: GlassCard(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: iconColor.withOpacity(0.18),
+                  shape: BoxShape.circle,
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  subtitle,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: Colors.white70,
-                  ),
+                child: Icon(icon, color: iconColor, size: 24),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: Colors.white70,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (onTap != null) ...[
+                const SizedBox(width: 8),
+                const Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  size: 14,
+                  color: Colors.white30,
                 ),
               ],
-            ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -275,7 +341,7 @@ class DashboardPage extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           Text(
-            'Nhập từ khóa để phân tích số liệu bảng điều khiển.',
+            'Nhập từ khóa để thực hiện phân tích tổng quan.',
             style: theme.textTheme.titleMedium?.copyWith(
               color: Colors.white,
             ),

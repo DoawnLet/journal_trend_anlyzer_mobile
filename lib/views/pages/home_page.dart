@@ -584,7 +584,7 @@ class _HomePageState extends State<HomePage> {
                   style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                 ),
                 const Text(
-                  'ấn phẩm',
+                  'bài báo',
                   style: TextStyle(color: Colors.white30, fontSize: 8),
                 ),
               ],
@@ -630,7 +630,7 @@ class _HomePageState extends State<HomePage> {
                   style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                 ),
                 const Text(
-                  'ấn phẩm',
+                  'bài báo',
                   style: TextStyle(color: Colors.white30, fontSize: 8),
                 ),
               ],
