@@ -126,6 +126,25 @@ class OpenAlexApiService {
     }
   }
 
+  /// Fetch popular topics dynamically
+  Future<List<String>> getPopularTopics({int limit = 8}) async {
+    try {
+      final String urlString = "$_baseUrl/topics?sort=works_count:desc&per_page=$limit&mailto=$_mailto";
+      final response = await _get(Uri.parse(urlString));
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = json.decode(response.body);
+        final List results = data['results'] ?? [];
+        return results
+            .map<String>((item) => item['display_name'] as String? ?? '')
+            .where((name) => name.isNotEmpty)
+            .toList();
+      }
+      return const [];
+    } catch (_) {
+      return const [];
+    }
+  }
+
   /// Pipeline 3: Fetch Works filtered by multiple parameters and sorting
   Future<Map<String, dynamic>> getWorksFiltered({
     String query = '',

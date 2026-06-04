@@ -17,7 +17,10 @@ class _TopicSelectorBottomSheetState extends State<TopicSelectorBottomSheet> {
   List<Map<String, dynamic>> _topicSuggestions = [];
   bool _isSearching = false;
 
-  final List<String> _popularTopics = [
+  List<String> _popularTopics = [];
+  bool _isLoadingPopular = false;
+
+  final List<String> _fallbackTopics = const [
     'Artificial Intelligence',
     'Machine Learning',
     'Deep Learning',
@@ -27,6 +30,35 @@ class _TopicSelectorBottomSheetState extends State<TopicSelectorBottomSheet> {
     'Neural Networks',
     'Robotics',
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchPopularTopics();
+  }
+
+  Future<void> _fetchPopularTopics() async {
+    if (!mounted) return;
+    setState(() {
+      _isLoadingPopular = true;
+    });
+    try {
+      final topics = await _apiService.getPopularTopics(limit: 8);
+      if (mounted) {
+        setState(() {
+          _popularTopics = topics;
+        });
+      }
+    } catch (_) {
+      // Bỏ qua lỗi và dùng fallback
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingPopular = false;
+        });
+      }
+    }
+  }
 
   Future<void> _onSearch(String query) async {
     if (query.trim().length < 2) {
@@ -177,34 +209,48 @@ class _TopicSelectorBottomSheetState extends State<TopicSelectorBottomSheet> {
               ),
             ),
             const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: _popularTopics.map((topic) {
-                final isSelected = SharedState.activeQueryNotifier.value == topic ||
-                    (SharedState.activeQueryNotifier.value.isEmpty && topic == 'Artificial Intelligence');
-                return ActionChip(
-                  label: Text(
-                    topic,
-                    style: TextStyle(
-                      color: isSelected ? Colors.black : Colors.white70,
-                      fontSize: 12,
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            _isLoadingPopular
+                ? const Center(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(vertical: 12.0),
+                      child: SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF80CBC4)),
+                        ),
+                      ),
                     ),
+                  )
+                : Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: (_popularTopics.isNotEmpty ? _popularTopics : _fallbackTopics).map((topic) {
+                      final isSelected = SharedState.activeQueryNotifier.value == topic ||
+                          (SharedState.activeQueryNotifier.value.isEmpty && topic == 'Artificial Intelligence');
+                      return ActionChip(
+                        label: Text(
+                          topic,
+                          style: TextStyle(
+                            color: isSelected ? Colors.black : Colors.white70,
+                            fontSize: 12,
+                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                          ),
+                        ),
+                        backgroundColor: isSelected
+                            ? const Color(0xFF80CBC4)
+                            : Colors.white.withOpacity(0.06),
+                        side: BorderSide(
+                          color: isSelected ? const Color(0xFF80CBC4) : Colors.white.withOpacity(0.1),
+                        ),
+                        onPressed: () {
+                          SharedState.activeQueryNotifier.value = topic;
+                          Navigator.pop(context);
+                        },
+                      );
+                    }).toList(),
                   ),
-                  backgroundColor: isSelected
-                      ? const Color(0xFF80CBC4)
-                      : Colors.white.withOpacity(0.06),
-                  side: BorderSide(
-                    color: isSelected ? const Color(0xFF80CBC4) : Colors.white.withOpacity(0.1),
-                  ),
-                  onPressed: () {
-                    SharedState.activeQueryNotifier.value = topic;
-                    Navigator.pop(context);
-                  },
-                );
-              }).toList(),
-            ),
             const SizedBox(height: 16),
 
             // Gợi ý danh sách kết quả tìm kiếm từ API
