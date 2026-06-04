@@ -39,10 +39,9 @@ class TrendNotifier extends ChangeNotifier {
     fetchTrendData(SharedState.activeQueryNotifier.value);
   }
 
-  /// Tải dữ liệu xu hướng của từ khóa
+  /// Tải dữ liệu xu hướng của từ khóa (hoặc mặc định nếu trống)
   Future<void> fetchTrendData(String query) async {
-    final cleanQuery = query.trim();
-    if (cleanQuery.isEmpty) return;
+    final cleanQuery = query.trim().isEmpty ? 'Artificial Intelligence' : query.trim();
 
     _isLoading = true;
     _errorMessage = null;

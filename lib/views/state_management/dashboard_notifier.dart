@@ -50,10 +50,9 @@ class DashboardNotifier extends ChangeNotifier {
     fetchDashboardData(SharedState.activeQueryNotifier.value);
   }
 
-  /// Tải dữ liệu phục vụ Dashboard
+  /// Tải dữ liệu phục vụ Dashboard (hoặc mặc định nếu trống)
   Future<void> fetchDashboardData(String query) async {
-    final cleanQuery = query.trim();
-    if (cleanQuery.isEmpty) return;
+    final cleanQuery = query.trim().isEmpty ? 'Artificial Intelligence' : query.trim();
 
     _isLoading = true;
     _errorMessage = null;

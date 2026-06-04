@@ -3,6 +3,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/theme/app_colors.dart';
 import '../widgets/glass_card.dart';
 import '../models/publication_model.dart';
+import '../state_management/shared_state.dart';
 
 /// Màn hình Chi tiết bài báo (Publication Detail Page).
 /// Hiển thị thông tin sâu về tác giả, năm công bố, tạp chí, số trích dẫn,
@@ -177,13 +178,18 @@ class DetailPage extends StatelessWidget {
                 spacing: 8.0,
                 runSpacing: 6.0,
                 children: publication.concepts.map((concept) {
-                  return Chip(
+                  return ActionChip(
                     backgroundColor: Colors.white.withOpacity(0.06),
                     side: BorderSide(color: Colors.white.withOpacity(0.1)),
                     label: Text(
                       concept,
                       style: const TextStyle(color: Colors.white70, fontSize: 12),
                     ),
+                    onPressed: () {
+                      SharedState.activeQueryNotifier.value = concept;
+                      SharedState.activeTabNotifier.value = 2; // Trend Page
+                      Navigator.pop(context); // Go back to tabs
+                    },
                   );
                 }).toList(),
               ),
@@ -204,13 +210,18 @@ class DetailPage extends StatelessWidget {
                 spacing: 8.0,
                 runSpacing: 6.0,
                 children: publication.topics.map((topic) {
-                  return Chip(
+                  return ActionChip(
                     backgroundColor: Colors.white.withOpacity(0.06),
                     side: BorderSide(color: Colors.white.withOpacity(0.1)),
                     label: Text(
                       topic,
                       style: const TextStyle(color: Colors.white70, fontSize: 12),
                     ),
+                    onPressed: () {
+                      SharedState.activeQueryNotifier.value = topic;
+                      SharedState.activeTabNotifier.value = 2; // Trend Page
+                      Navigator.pop(context); // Go back to tabs
+                    },
                   );
                 }).toList(),
               ),

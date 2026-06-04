@@ -66,7 +66,7 @@ class DashboardPage extends StatelessWidget {
               children: [
                 // --- Tiêu đề chủ đề đang hoạt động ---
                 Text(
-                  'Chủ đề: "${SharedState.activeQueryNotifier.value}"',
+                  'Chủ đề: "${SharedState.activeQueryNotifier.value.isEmpty ? 'Artificial Intelligence (Mặc định)' : SharedState.activeQueryNotifier.value}"',
                   style: theme.textTheme.titleMedium?.copyWith(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,

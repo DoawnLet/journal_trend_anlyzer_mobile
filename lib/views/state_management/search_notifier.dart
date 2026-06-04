@@ -95,6 +95,14 @@ class SearchNotifier {
       return;
     }
 
+    if (state.selectedConceptName == newQuery) {
+      return; // Đã được xử lý bởi setConceptFilter
+    }
+
+    if (state.selectedTopicName == newQuery) {
+      return; // Đã được xử lý bởi setTopicFilter
+    }
+
     if (state.selectedAuthorId != null || 
         state.selectedConceptId != null ||
         state.selectedTopicId != null ||
@@ -174,6 +182,7 @@ class SearchNotifier {
       selectedConceptId: id,
       selectedConceptName: name,
     );
+    SharedState.activeQueryNotifier.value = name;
     executeWorksFetchPipeline();
   }
 
@@ -181,7 +190,9 @@ class SearchNotifier {
     state = state.copyWith(
       clearConceptId: true,
       clearConceptName: true,
+      searchQuery: '',
     );
+    SharedState.activeQueryNotifier.value = '';
     executeWorksFetchPipeline();
   }
 
@@ -190,6 +201,7 @@ class SearchNotifier {
       selectedTopicId: id,
       selectedTopicName: name,
     );
+    SharedState.activeQueryNotifier.value = name;
     executeWorksFetchPipeline();
   }
 
@@ -197,7 +209,9 @@ class SearchNotifier {
     state = state.copyWith(
       clearTopicId: true,
       clearTopicName: true,
+      searchQuery: '',
     );
+    SharedState.activeQueryNotifier.value = '';
     executeWorksFetchPipeline();
   }
 

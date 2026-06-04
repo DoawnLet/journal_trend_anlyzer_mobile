@@ -5,6 +5,7 @@ import '../../core/utils/formatters.dart';
 import '../widgets/glass_card.dart';
 import '../state_management/trend_notifier.dart';
 import '../state_management/shared_state.dart';
+import '../services/openalex_api_service.dart';
 import 'detail_page.dart';
 
 /// Màn hình Biểu đồ xu hướng (Trend Analysis Page).
@@ -14,6 +15,15 @@ class TrendPage extends StatelessWidget {
   final TrendNotifier notifier;
 
   const TrendPage({super.key, required this.notifier});
+
+  void _showTopicSelector(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => const TopicSelectorBottomSheet(),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -39,51 +49,97 @@ class TrendPage extends StatelessWidget {
           ),
         ],
       ),
-      body: ListenableBuilder(
-        listenable: notifier,
-        builder: (context, _) {
-          if (notifier.isLoading) {
-            return const Center(
-              child: CircularProgressIndicator(
-                color: Colors.white,
-              ),
-            );
-          }
-
-          if (notifier.errorMessage != null) {
-            return _buildErrorState(theme, notifier.errorMessage!);
-          }
-
-          if (notifier.publications.isEmpty) {
-            return _buildEmptyState(theme);
-          }
-
-          return SingleChildScrollView(
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // --- Thẻ chọn chủ đề phân tích nổi bật ở đầu trang ---
+          Padding(
             padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // --- Tiêu đề chủ đề đang phân tích ---
-                Text(
-                  'Chủ đề: "${SharedState.activeQueryNotifier.value}"',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
+            child: ValueListenableBuilder<String>(
+              valueListenable: SharedState.activeQueryNotifier,
+              builder: (context, activeQuery, _) {
+                return InkWell(
+                  onTap: () => _showTopicSelector(context),
+                  borderRadius: BorderRadius.circular(12),
+                  child: GlassCard(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    color: Colors.white.withOpacity(0.06),
+                    borderColor: Colors.white.withOpacity(0.12),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Chủ đề đang phân tích (Chọn để thay đổi)',
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  color: Colors.white60,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                activeQuery.isEmpty ? 'Artificial Intelligence' : activeQuery,
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Icon(
+                          Icons.arrow_drop_down_circle_outlined,
+                          color: Color(0xFF80CBC4),
+                          size: 24,
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(height: 16),
+                );
+              },
+            ),
+          ),
+          
+          Expanded(
+            child: ListenableBuilder(
+              listenable: notifier,
+              builder: (context, _) {
+                if (notifier.isLoading) {
+                  return const Center(
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                    ),
+                  );
+                }
 
-                // --- Mục 1: Biểu đồ đường phân bố số lượng bài viết ---
-                Text(
-                  'Biểu đồ sản lượng theo năm',
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                _buildTrendChart(theme),
-                const SizedBox(height: 24),
+                if (notifier.errorMessage != null) {
+                  return _buildErrorState(theme, notifier.errorMessage!);
+                }
+
+                if (notifier.publications.isEmpty) {
+                  return _buildEmptyState(theme);
+                }
+
+                return SingleChildScrollView(
+                  padding: const EdgeInsets.only(left: 16.0, right: 16.0, bottom: 16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // --- Mục 1: Biểu đồ đường phân bố số lượng bài viết ---
+                      Text(
+                        'Biểu đồ sản lượng theo năm',
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      _buildTrendChart(theme),
+                      const SizedBox(height: 24),
 
                 // --- Mục 2: Top bài báo có trích dẫn nhiều nhất ---
                 Text(
@@ -141,12 +197,15 @@ class TrendPage extends StatelessWidget {
           );
         },
       ),
+    ),
+  ],
+),
     );
   }
 
   Widget _buildTrendChart(ThemeData theme) {
     final dist = notifier.yearlyDistribution;
-    if (dist.length < 2) {
+    if (dist.isEmpty) {
       return const GlassCard(
         padding: EdgeInsets.symmetric(vertical: 40),
         child: Center(
@@ -158,41 +217,75 @@ class TrendPage extends StatelessWidget {
       );
     }
 
-    final spots = dist.entries
-        .map((e) => FlSpot(e.key.toDouble(), e.value.toDouble()))
-        .toList();
+    // Sắp xếp các năm và lấy tối đa 10 năm gần nhất có dữ liệu để tránh chen chúc nhãn
+    final sortedYears = dist.keys.toList()..sort();
+    final last10Years = sortedYears.length > 10
+        ? sortedYears.sublist(sortedYears.length - 10)
+        : sortedYears;
 
-    final years = dist.keys.toList();
-    final counts = dist.values.toList();
-    final double minX = years.first.toDouble();
-    final double maxX = years.last.toDouble();
-    final double maxY = (counts.reduce((a, b) => a > b ? a : b).toDouble() * 1.2).ceilToDouble();
+    final Map<int, int> filteredDist = {
+      for (var year in last10Years) year: dist[year]!
+    };
+
+    final maxVal = filteredDist.values.isEmpty
+        ? 0
+        : filteredDist.values.reduce((a, b) => a > b ? a : b);
+    final double maxY = maxVal == 0 ? 10 : (maxVal * 1.15).ceilToDouble();
+
+    final barGroups = filteredDist.entries.map((entry) {
+      final index = filteredDist.keys.toList().indexOf(entry.key);
+      return BarChartGroupData(
+        x: index,
+        barRods: [
+          BarChartRodData(
+            toY: entry.value.toDouble(),
+            width: 14,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+            gradient: const LinearGradient(
+              colors: [
+                Color(0xFF00796B), // Deep teal
+                Color(0xFF80CBC4), // Mint teal
+              ],
+              begin: Alignment.bottomCenter,
+              end: Alignment.topCenter,
+            ),
+          ),
+        ],
+      );
+    }).toList();
 
     return GlassCard(
       padding: const EdgeInsets.only(top: 24, bottom: 12, left: 12, right: 24),
       child: SizedBox(
-        height: 200,
-        child: LineChart(
-          LineChartData(
+        height: 220,
+        child: BarChart(
+          BarChartData(
+            alignment: BarChartAlignment.spaceAround,
+            maxY: maxY,
             gridData: FlGridData(
               show: true,
               drawVerticalLine: false,
               getDrawingHorizontalLine: (value) => FlLine(
-                color: Colors.white.withOpacity(0.15),
+                color: Colors.white.withOpacity(0.1),
                 strokeWidth: 1,
               ),
             ),
+            borderData: FlBorderData(show: false),
             titlesData: FlTitlesData(
               rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
               topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
               leftTitles: AxisTitles(
                 sideTitles: SideTitles(
                   showTitles: true,
-                  reservedSize: 30,
+                  reservedSize: 40,
                   getTitlesWidget: (value, meta) {
-                    if (value % 2 != 0 && value != maxY) return const SizedBox.shrink();
+                    if (value == 0) return const SizedBox.shrink();
+                    final interval = (maxY / 4).ceil();
+                    if (interval > 0 && value.toInt() % interval != 0 && value != maxY) {
+                      return const SizedBox.shrink();
+                    }
                     return Text(
-                      value.toInt().toString(),
+                      Formatters.formatCitationCount(value.toInt()),
                       style: theme.textTheme.labelSmall?.copyWith(color: Colors.white70),
                     );
                   },
@@ -202,10 +295,10 @@ class TrendPage extends StatelessWidget {
                 sideTitles: SideTitles(
                   showTitles: true,
                   reservedSize: 24,
-                  interval: dist.length > 8 ? 2 : 1,
                   getTitlesWidget: (value, meta) {
-                    final year = value.toInt();
-                    if (!dist.containsKey(year)) return const SizedBox.shrink();
+                    final idx = value.toInt();
+                    if (idx < 0 || idx >= last10Years.length) return const SizedBox.shrink();
+                    final year = last10Years[idx];
                     return Padding(
                       padding: const EdgeInsets.only(top: 6.0),
                       child: Text(
@@ -220,33 +313,25 @@ class TrendPage extends StatelessWidget {
                 ),
               ),
             ),
-            borderData: FlBorderData(show: false),
-            minX: minX,
-            maxX: maxX,
-            minY: 0,
-            maxY: maxY,
-            lineBarsData: [
-              LineChartBarData(
-                spots: spots,
-                isCurved: true,
-                color: Colors.white,
-                barWidth: 3.5,
-                isStrokeCapRound: true,
-                dotData: FlDotData(
-                  show: true,
-                  getDotPainter: (spot, percent, barData, index) => FlDotCirclePainter(
-                    radius: 4,
-                    color: Colors.white,
-                    strokeWidth: 1.5,
-                    strokeColor: AppColors.background,
-                  ),
-                ),
-                belowBarData: BarAreaData(
-                  show: true,
-                  color: Colors.white.withOpacity(0.15),
-                ),
+            barTouchData: BarTouchData(
+              enabled: true,
+              touchTooltipData: BarTouchTooltipData(
+                getTooltipColor: (group) => const Color(0xFF1E293B).withOpacity(0.9),
+                getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                  final year = last10Years[groupIndex];
+                  final val = filteredDist[year]!;
+                  return BarTooltipItem(
+                    'Năm $year\n$val bài báo',
+                    const TextStyle(
+                      color: Color(0xFF80CBC4),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  );
+                },
               ),
-            ],
+            ),
+            barGroups: barGroups,
           ),
         ),
       ),
@@ -479,6 +564,270 @@ class TrendPage extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Bottom sheet giúp tìm kiếm và chọn nhanh chủ đề phân tích xu hướng.
+class TopicSelectorBottomSheet extends StatefulWidget {
+  const TopicSelectorBottomSheet({super.key});
+
+  @override
+  State<TopicSelectorBottomSheet> createState() => _TopicSelectorBottomSheetState();
+}
+
+class _TopicSelectorBottomSheetState extends State<TopicSelectorBottomSheet> {
+  final TextEditingController _searchController = TextEditingController();
+  final OpenAlexApiService _apiService = OpenAlexApiService();
+
+  List<Map<String, dynamic>> _topicSuggestions = [];
+  bool _isSearching = false;
+
+  final List<String> _popularTopics = [
+    'Artificial Intelligence',
+    'Machine Learning',
+    'Deep Learning',
+    'Data Science',
+    'Computer Vision',
+    'Natural Language Processing',
+    'Neural Networks',
+    'Robotics',
+  ];
+
+  Future<void> _onSearch(String query) async {
+    if (query.trim().length < 2) {
+      setState(() {
+        _topicSuggestions = [];
+      });
+      return;
+    }
+
+    setState(() {
+      _isSearching = true;
+    });
+
+    try {
+      final results = await _apiService.searchTopics(query);
+      if (mounted) {
+        setState(() {
+          _topicSuggestions = results;
+        });
+      }
+    } catch (_) {
+      // Bỏ qua lỗi
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSearching = false;
+        });
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final mediaQuery = MediaQuery.of(context);
+
+    return Container(
+      padding: EdgeInsets.only(
+        top: 16,
+        left: 16,
+        right: 16,
+        bottom: mediaQuery.viewInsets.bottom + 24,
+      ),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E293B).withOpacity(0.95), // Slate-900 với độ mờ cao
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.5),
+            blurRadius: 20,
+            spreadRadius: 5,
+          ),
+        ],
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Thanh kéo nhỏ ở đầu
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.white24,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Tiêu đề & nút đóng
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Chọn Chủ Đề Phân Tích',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close_rounded, color: Colors.white60),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            // Ô tìm kiếm chủ đề
+            TextField(
+              controller: _searchController,
+              autofocus: true,
+              style: const TextStyle(color: Colors.white, fontSize: 14),
+              onChanged: _onSearch,
+              decoration: InputDecoration(
+                hintText: 'Nhập từ khóa chủ đề (vd: Deep Learning)...',
+                hintStyle: const TextStyle(color: Colors.white38),
+                prefixIcon: const Icon(Icons.search_rounded, color: Colors.white54),
+                suffixIcon: _isSearching
+                    ? const Padding(
+                        padding: EdgeInsets.all(12),
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : _searchController.text.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear_rounded, color: Colors.white54),
+                            onPressed: () {
+                              _searchController.clear();
+                              _onSearch('');
+                            },
+                          )
+                        : null,
+                filled: true,
+                fillColor: Colors.white.withOpacity(0.06),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.white.withOpacity(0.12)),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.white.withOpacity(0.12)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Color(0xFF80CBC4)),
+                ),
+                contentPadding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Các chủ đề phổ biến
+            Text(
+              'Chủ đề phổ biến',
+              style: theme.textTheme.labelMedium?.copyWith(
+                color: Colors.white70,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: _popularTopics.map((topic) {
+                final isSelected = SharedState.activeQueryNotifier.value == topic ||
+                    (SharedState.activeQueryNotifier.value.isEmpty && topic == 'Artificial Intelligence');
+                return ActionChip(
+                  label: Text(
+                    topic,
+                    style: TextStyle(
+                      color: isSelected ? Colors.black : Colors.white70,
+                      fontSize: 12,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    ),
+                  ),
+                  backgroundColor: isSelected
+                      ? const Color(0xFF80CBC4)
+                      : Colors.white.withOpacity(0.06),
+                  side: BorderSide(
+                    color: isSelected ? const Color(0xFF80CBC4) : Colors.white.withOpacity(0.1),
+                  ),
+                  onPressed: () {
+                    SharedState.activeQueryNotifier.value = topic;
+                    Navigator.pop(context);
+                  },
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 16),
+
+            // Gợi ý danh sách kết quả tìm kiếm từ API
+            if (_topicSuggestions.isNotEmpty) ...[
+              Text(
+                'Gợi ý kết quả tìm kiếm',
+                style: theme.textTheme.labelMedium?.copyWith(
+                  color: Colors.white70,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.04),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.white.withOpacity(0.08)),
+                ),
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: _topicSuggestions.length,
+                  separatorBuilder: (context, index) => Divider(
+                    color: Colors.white.withOpacity(0.08),
+                    height: 1,
+                  ),
+                  itemBuilder: (context, index) {
+                    final sug = _topicSuggestions[index];
+                    final name = sug['display_name'] ?? '';
+                    return ListTile(
+                      title: Text(
+                        name,
+                        style: const TextStyle(color: Colors.white, fontSize: 13),
+                      ),
+                      trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 12, color: Colors.white38),
+                      onTap: () {
+                        SharedState.activeQueryNotifier.value = name;
+                        Navigator.pop(context);
+                      },
+                    );
+                  },
+                ),
+              ),
+            ] else if (_searchController.text.isNotEmpty && !_isSearching) ...[
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(vertical: 24),
+                  child: Text(
+                    'Không tìm thấy chủ đề nào phù hợp.',
+                    style: TextStyle(color: Colors.white54, fontSize: 12),
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }

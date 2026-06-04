@@ -5,13 +5,24 @@ class OpenAlexApiService {
   final String _baseUrl = "https://api.openalex.org";
   final String _mailto = "minhvtbd12345@fpt.edu.vn"; // Polite Pool Access
 
+  /// Hàm trợ giúp thực hiện GET kèm theo các header bắt buộc (User-Agent)
+  Future<http.Response> _get(Uri uri) async {
+    return await http.get(
+      uri,
+      headers: {
+        'Accept': 'application/json',
+        'User-Agent': 'JournalTrendAnalyzerMobile/1.0',
+      },
+    );
+  }
+
   /// Pipeline 1: Fetch prominent Authors to display on HomePage
   Future<Map<String, dynamic>> getTopAuthors() async {
     try {
       // Fetching authors sorted by cited_by_count to display impactful researchers
       final String urlString = "$_baseUrl/authors?sort=cited_by_count:desc&per_page=10&mailto=$_mailto";
       final url = Uri.parse(urlString);
-      final response = await http.get(url);
+      final response = await _get(url);
 
       if (response.statusCode == 200) {
         return json.decode(response.body); // Return map holding metadata and results array
@@ -31,7 +42,7 @@ class OpenAlexApiService {
       
       final String urlString = "$_baseUrl/works?filter=$encodedFilter&per_page=20&mailto=$_mailto";
       final url = Uri.parse(urlString);
-      final response = await http.get(url);
+      final response = await _get(url);
 
       if (response.statusCode == 200) {
         return json.decode(response.body);
@@ -52,7 +63,7 @@ class OpenAlexApiService {
       } else {
         urlString = "$_baseUrl/authors?search=${Uri.encodeComponent(query.trim())}&per_page=5&mailto=$_mailto";
       }
-      final response = await http.get(Uri.parse(urlString));
+      final response = await _get(Uri.parse(urlString));
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = json.decode(response.body);
         final List results = data['results'] ?? [];
@@ -76,7 +87,7 @@ class OpenAlexApiService {
       } else {
         urlString = "$_baseUrl/concepts?search=${Uri.encodeComponent(query.trim())}&per_page=5&mailto=$_mailto";
       }
-      final response = await http.get(Uri.parse(urlString));
+      final response = await _get(Uri.parse(urlString));
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = json.decode(response.body);
         final List results = data['results'] ?? [];
@@ -100,7 +111,7 @@ class OpenAlexApiService {
       } else {
         urlString = "$_baseUrl/topics?search=${Uri.encodeComponent(query.trim())}&per_page=5&mailto=$_mailto";
       }
-      final response = await http.get(Uri.parse(urlString));
+      final response = await _get(Uri.parse(urlString));
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = json.decode(response.body);
         final List results = data['results'] ?? [];
@@ -154,7 +165,7 @@ class OpenAlexApiService {
       }
 
       final uri = Uri.parse("$_baseUrl/works").replace(queryParameters: queryParams);
-      final response = await http.get(uri);
+      final response = await _get(uri);
 
       if (response.statusCode == 200) {
         return json.decode(response.body);

@@ -220,6 +220,7 @@ class _SearchFilterBottomSheetState extends State<SearchFilterBottomSheet> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: ListView.builder(
+                    physics: const NeverScrollableScrollPhysics(),
                     shrinkWrap: true,
                     itemCount: _authorSuggestions.length,
                     itemBuilder: (context, index) {
@@ -298,6 +299,7 @@ class _SearchFilterBottomSheetState extends State<SearchFilterBottomSheet> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: ListView.builder(
+                    physics: const NeverScrollableScrollPhysics(),
                     shrinkWrap: true,
                     itemCount: _conceptSuggestions.length,
                     itemBuilder: (context, index) {
@@ -376,6 +378,7 @@ class _SearchFilterBottomSheetState extends State<SearchFilterBottomSheet> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: ListView.builder(
+                    physics: const NeverScrollableScrollPhysics(),
                     shrinkWrap: true,
                     itemCount: _topicSuggestions.length,
                     itemBuilder: (context, index) {
