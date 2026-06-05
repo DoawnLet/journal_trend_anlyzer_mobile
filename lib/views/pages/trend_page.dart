@@ -7,15 +7,97 @@ import '../widgets/topic_selector_bottom_sheet.dart';
 import '../widgets/works_list_bottom_sheet.dart';
 import '../state_management/trend_notifier.dart';
 import '../state_management/shared_state.dart';
+import '../services/openalex_api_service.dart';
 import 'detail_page.dart';
 
 /// Màn hình Biểu đồ xu hướng (Trend Analysis Page).
 /// Trực quan hóa số lượng bài báo qua các năm và hiển thị xếp hạng
 /// các bài báo nổi tiếng nhất, tạp chí xuất sắc nhất, và tác giả tiêu biểu.
-class TrendPage extends StatelessWidget {
+class TrendPage extends StatefulWidget {
   final TrendNotifier notifier;
 
   const TrendPage({super.key, required this.notifier});
+
+  @override
+  State<TrendPage> createState() => _TrendPageState();
+}
+
+class _TrendPageState extends State<TrendPage> {
+  final OpenAlexApiService _apiService = OpenAlexApiService();
+  List<String> _trendingTopics = [];
+  bool _isLoadingTrending = false;
+
+  final List<Map<String, dynamic>> _domains = [
+    {
+      'name': 'Physical Sciences',
+      'label': 'Khoa học Vật lý & Máy tính',
+      'gradient': const LinearGradient(
+        colors: [Color(0xFF0F2027), Color(0xFF203A43), Color(0xFF2C5364)],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ),
+      'icon': Icons.computer_rounded,
+    },
+    {
+      'name': 'Life Sciences',
+      'label': 'Khoa học Sự sống & Sinh học',
+      'gradient': const LinearGradient(
+        colors: [Color(0xFF134E5E), Color(0xFF71B280)],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ),
+      'icon': Icons.eco_rounded,
+    },
+    {
+      'name': 'Health Sciences',
+      'label': 'Y tế & Khoa học Sức khỏe',
+      'gradient': const LinearGradient(
+        colors: [Color(0xFFD38312), Color(0xFFA83279)],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ),
+      'icon': Icons.medical_services_rounded,
+    },
+    {
+      'name': 'Social Sciences',
+      'label': 'Khoa học Xã hội & Nhân văn',
+      'gradient': const LinearGradient(
+        colors: [Color(0xFF1E3C72), Color(0xFF2A5298)],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ),
+      'icon': Icons.people_rounded,
+    },
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchTrendingTopics();
+  }
+
+  Future<void> _fetchTrendingTopics() async {
+    if (!mounted) return;
+    setState(() {
+      _isLoadingTrending = true;
+    });
+    try {
+      final topics = await _apiService.getPopularTopics(limit: 8);
+      if (mounted) {
+        setState(() {
+          _trendingTopics = topics;
+        });
+      }
+    } catch (_) {
+      // Fallback khi API lỗi
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingTrending = false;
+        });
+      }
+    }
+  }
 
   void _showTopicSelector(BuildContext context) {
     showModalBottomSheet(
@@ -107,9 +189,9 @@ class TrendPage extends StatelessWidget {
           
           Expanded(
             child: ListenableBuilder(
-              listenable: notifier,
+              listenable: widget.notifier,
               builder: (context, _) {
-                if (notifier.isLoading) {
+                if (widget.notifier.isLoading) {
                   return const Center(
                     child: CircularProgressIndicator(
                       color: Colors.white,
@@ -117,11 +199,11 @@ class TrendPage extends StatelessWidget {
                   );
                 }
 
-                if (notifier.errorMessage != null) {
-                  return _buildErrorState(theme, notifier.errorMessage!);
+                if (widget.notifier.errorMessage != null) {
+                  return _buildErrorState(theme, widget.notifier.errorMessage!);
                 }
 
-                if (notifier.publications.isEmpty) {
+                if (widget.notifier.publications.isEmpty) {
                   return _buildEmptyState(theme);
                 }
 
@@ -130,6 +212,137 @@ class TrendPage extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // --- Lĩnh vực gợi ý khám phá ---
+                      Text(
+                        'Khám phá theo lĩnh vực',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        height: 72,
+                        child: ListView.builder(
+                          scrollDirection: Axis.horizontal,
+                          physics: const BouncingScrollPhysics(),
+                          itemCount: _domains.length,
+                          itemBuilder: (context, index) {
+                            final domain = _domains[index];
+                            final isSelected = SharedState.activeQueryNotifier.value == domain['name'];
+                            return Padding(
+                              padding: const EdgeInsets.only(right: 12.0),
+                              child: Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  onTap: () {
+                                    SharedState.activeQueryNotifier.value = domain['name'];
+                                  },
+                                  borderRadius: BorderRadius.circular(16),
+                                  child: Container(
+                                    width: 190,
+                                    decoration: BoxDecoration(
+                                      gradient: domain['gradient'] as Gradient,
+                                      borderRadius: BorderRadius.circular(16),
+                                      border: Border.all(
+                                        color: isSelected ? const Color(0xFF80CBC4) : Colors.white.withOpacity(0.12),
+                                        width: isSelected ? 2.0 : 1.0,
+                                      ),
+                                    ),
+                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                    child: Row(
+                                      children: [
+                                        Icon(domain['icon'] as IconData, color: Colors.white, size: 20),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            domain['label'] as String,
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+
+                      // --- Gợi ý chủ đề nóng ---
+                      Text(
+                        'Chủ đề nóng thịnh hành',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      _isLoadingTrending
+                          ? const SizedBox(
+                              height: 40,
+                              child: Center(
+                                child: SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF80CBC4)),
+                                  ),
+                                ),
+                              ),
+                            )
+                          : _trendingTopics.isEmpty
+                              ? const SizedBox(
+                                  height: 40,
+                                  child: Center(
+                                    child: Text(
+                                      'Không có chủ đề đề xuất.',
+                                      style: TextStyle(color: Colors.white30, fontSize: 11),
+                                    ),
+                                  ),
+                                )
+                              : SingleChildScrollView(
+                                  scrollDirection: Axis.horizontal,
+                                  physics: const BouncingScrollPhysics(),
+                                  child: Row(
+                                    children: _trendingTopics.map((topic) {
+                                      final isSelected = SharedState.activeQueryNotifier.value == topic;
+                                      return Padding(
+                                        padding: const EdgeInsets.only(right: 8.0),
+                                        child: ActionChip(
+                                          label: Text(
+                                            topic,
+                                            style: TextStyle(
+                                              color: isSelected ? Colors.black : Colors.white70,
+                                              fontSize: 11,
+                                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                            ),
+                                          ),
+                                          backgroundColor: isSelected
+                                              ? const Color(0xFF80CBC4)
+                                              : Colors.white.withOpacity(0.06),
+                                          side: BorderSide(
+                                            color: isSelected ? const Color(0xFF80CBC4) : Colors.white.withOpacity(0.12),
+                                          ),
+                                          onPressed: () {
+                                            SharedState.activeQueryNotifier.value = topic;
+                                          },
+                                        ),
+                                      );
+                                    }).toList(),
+                                  ),
+                                ),
+                      const SizedBox(height: 24),
+
                       // --- Mục 1: Biểu đồ đường phân bố số lượng bài viết ---
                       Text(
                         'Biểu đồ sản lượng theo năm',
@@ -142,70 +355,70 @@ class TrendPage extends StatelessWidget {
                       _buildTrendChart(theme),
                       const SizedBox(height: 24),
 
-                // --- Mục 2: Top bài báo có trích dẫn nhiều nhất ---
-                Text(
-                  'Bài viết có lượt trích dẫn cao nhất',
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                _buildTopPapersList(context, theme),
-                const SizedBox(height: 24),
+                      // --- Mục 2: Top bài báo có trích dẫn nhiều nhất ---
+                      Text(
+                        'Bài viết có lượt trích dẫn cao nhất',
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      _buildTopPapersList(context, theme),
+                      const SizedBox(height: 24),
 
-                // --- Mục 3: Top Tạp chí & Tác giả ---
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: Column(
+                      // --- Mục 3: Top Tạp chí & Tác giả ---
+                      Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            'Top Tạp chí',
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Top Tạp chí',
+                                  style: theme.textTheme.titleMedium?.copyWith(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                _buildTopJournalsList(context, theme),
+                              ],
                             ),
                           ),
-                          const SizedBox(height: 8),
-                          _buildTopJournalsList(context, theme),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Top Tác giả',
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Top Tác giả',
+                                  style: theme.textTheme.titleMedium?.copyWith(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                _buildTopAuthorsList(context, theme),
+                              ],
                             ),
                           ),
-                          const SizedBox(height: 8),
-                          _buildTopAuthorsList(context, theme),
                         ],
                       ),
-                    ),
-                  ],
-                ),
-              ],
+                    ],
+                  ),
+                );
+              },
             ),
-          );
-        },
+          ),
+        ],
       ),
-    ),
-  ],
-),
     );
   }
 
   Widget _buildTrendChart(ThemeData theme) {
-    final dist = notifier.yearlyDistribution;
+    final dist = widget.notifier.yearlyDistribution;
     if (dist.isEmpty) {
       return const GlassCard(
         padding: EdgeInsets.symmetric(vertical: 40),
@@ -340,7 +553,7 @@ class TrendPage extends StatelessWidget {
   }
 
   Widget _buildTopPapersList(BuildContext context, ThemeData theme) {
-    final list = notifier.topPublications;
+    final list = widget.notifier.topPublications;
     return Column(
       children: list.map((pub) {
         return Material(
@@ -416,7 +629,7 @@ class TrendPage extends StatelessWidget {
   }
 
   Widget _buildTopJournalsList(BuildContext context, ThemeData theme) {
-    final list = notifier.topJournals;
+    final list = widget.notifier.topJournals;
     if (list.isEmpty) {
       return const GlassCard(
         padding: EdgeInsets.all(12),
@@ -427,7 +640,7 @@ class TrendPage extends StatelessWidget {
     return Column(
       children: list.map((entry) {
         // Lọc danh sách bài báo thuộc tạp chí này
-        final journalPubs = notifier.publications
+        final journalPubs = widget.notifier.publications
             .where((pub) => pub.journalName == entry.key)
             .toList();
 
@@ -488,7 +701,7 @@ class TrendPage extends StatelessWidget {
   }
 
   Widget _buildTopAuthorsList(BuildContext context, ThemeData theme) {
-    final list = notifier.topAuthors;
+    final list = widget.notifier.topAuthors;
     if (list.isEmpty) {
       return const GlassCard(
         padding: EdgeInsets.all(12),
@@ -499,7 +712,7 @@ class TrendPage extends StatelessWidget {
     return Column(
       children: list.map((entry) {
         // Lọc danh sách bài báo mà tác giả này tham gia viết
-        final authorPubs = notifier.publications
+        final authorPubs = widget.notifier.publications
             .where((pub) => pub.authors.contains(entry.key))
             .toList();
 
