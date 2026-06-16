@@ -7,6 +7,32 @@ import 'package:journal_trend_analysis_mb/views/services/trend_api_service.dart'
 import 'package:journal_trend_analysis_mb/views/state_management/shared_state.dart';
 
 class FakeTrendApiService implements TrendApiService {
+  final List<Publication> publications = const [
+    Publication(
+      id: '1',
+      title: 'Test Publication 1',
+      publicationYear: 2022,
+      citationCount: 100,
+      doi: 'https://doi.org/10.1000/test1',
+      journalName: 'Test Journal A',
+      authors: ['Author X', 'Author Y'],
+      abstractText: 'This is abstract 1',
+      concepts: ['Concept A'],
+      topics: ['Topic A'],
+    ),
+    Publication(
+      id: '2',
+      title: 'Test Publication 2',
+      publicationYear: 2023,
+      citationCount: 50,
+      journalName: 'Test Journal B',
+      authors: ['Author Z'],
+      abstractText: 'This is abstract 2',
+      concepts: ['Concept B'],
+      topics: ['Topic B'],
+    ),
+  ];
+
   @override
   Future<Map<int, int>> fetchPublicationsGroupByYear(String query) async {
     return {2021: 10, 2022: 20, 2023: 15};
@@ -14,30 +40,39 @@ class FakeTrendApiService implements TrendApiService {
 
   @override
   Future<List<Publication>> fetchTopInfluentialPublications(String query, {int perPage = 20}) async {
-    return [
-      const Publication(
-        id: '1',
-        title: 'Test Publication 1',
-        publicationYear: 2022,
-        citationCount: 100,
-        journalName: 'Test Journal A',
-        authors: ['Author X', 'Author Y'],
-        abstractText: 'This is abstract 1',
-        concepts: ['Concept A'],
-        topics: ['Topic A'],
-      ),
-      const Publication(
-        id: '2',
-        title: 'Test Publication 2',
-        publicationYear: 2023,
-        citationCount: 50,
-        journalName: 'Test Journal B',
-        authors: ['Author Z'],
-        abstractText: 'This is abstract 2',
-        concepts: ['Concept B'],
-        topics: ['Topic B'],
-      ),
+    return publications;
+  }
+
+  @override
+  Future<List<MapEntry<String, int>>> fetchTopResearchJournals(
+    String query, {
+    int perPage = 200,
+    int limit = 5,
+  }) async {
+    return const [
+      MapEntry('Test Journal A', 1),
+      MapEntry('Test Journal B', 1),
     ];
+  }
+
+  @override
+  Future<List<MapEntry<String, int>>> fetchTopContributingAuthors(
+    String query, {
+    int perPage = 200,
+    int limit = 5,
+  }) async {
+    return const [
+      MapEntry('Author X', 1),
+      MapEntry('Author Z', 1),
+    ];
+  }
+
+  @override
+  Future<List<Publication>> fetchPublicationSample(
+    String query, {
+    required int perPage,
+  }) async {
+    return publications;
   }
 }
 

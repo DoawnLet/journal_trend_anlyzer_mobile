@@ -17,6 +17,13 @@ class DashboardPage extends StatelessWidget {
 
   const DashboardPage({super.key, required this.notifier});
 
+  Future<void> _refreshDashboard() async {
+    await notifier.fetchDashboardData(
+      SharedState.activeQueryNotifier.value,
+      showLoading: false,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -41,26 +48,55 @@ class DashboardPage extends StatelessWidget {
           ),
         ],
       ),
-      body: ListenableBuilder(
-        listenable: notifier,
-        builder: (context, _) {
+      body: RefreshIndicator(
+        color: const Color(0xFF80CBC4),
+        backgroundColor: const Color(0xFF1E4646),
+        onRefresh: _refreshDashboard,
+        child: ListenableBuilder(
+          listenable: notifier,
+          builder: (context, _) {
           if (notifier.isLoading) {
-            return const Center(
-              child: CircularProgressIndicator(
-                color: Colors.white,
-              ),
+            return ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              children: const [
+                SizedBox(
+                  height: 420,
+                  child: Center(
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ],
             );
           }
 
           if (notifier.errorMessage != null) {
-            return _buildErrorState(theme, notifier.errorMessage!);
+            return ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              children: [
+                SizedBox(
+                  height: 420,
+                  child: _buildErrorState(theme, notifier.errorMessage!),
+                ),
+              ],
+            );
           }
 
-          if (notifier.publications.isEmpty) {
-            return _buildEmptyState(theme);
+          if (!notifier.hasData) {
+            return ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              children: [
+                SizedBox(
+                  height: 420,
+                  child: _buildEmptyState(theme),
+                ),
+              ],
+            );
           }
 
           return SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.all(16.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -228,7 +264,8 @@ class DashboardPage extends StatelessWidget {
               ],
             ),
           );
-        },
+          },
+        ),
       ),
     );
   }

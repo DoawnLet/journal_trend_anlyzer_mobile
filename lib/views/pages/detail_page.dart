@@ -195,6 +195,43 @@ class DetailPage extends StatelessWidget {
             ),
             const SizedBox(height: 20),
             if (publication.doi != null && publication.doi!.isNotEmpty) ...[
+              GlassCard(
+                padding: const EdgeInsets.all(14),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(
+                      Icons.link_rounded,
+                      color: Colors.white70,
+                      size: 18,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'DOI',
+                            style: theme.textTheme.labelMedium?.copyWith(
+                              color: Colors.white70,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            publication.doi!,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: Colors.white,
+                              height: 1.35,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
               ElevatedButton.icon(
                 onPressed: () => _openDoiLink(context, publication.doi!),
                 icon: const Icon(Icons.open_in_new_rounded, size: 18),

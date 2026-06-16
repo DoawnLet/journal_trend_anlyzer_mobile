@@ -1,49 +1,136 @@
 import '../models/publication_model.dart';
 import 'openalex_client.dart';
 
-/// Dịch vụ gọi API OpenAlex phục vụ cho phân tích Xu hướng.
 class TrendApiService {
   final OpenAlexClient _client;
 
   TrendApiService({OpenAlexClient? client}) : _client = client ?? OpenAlexClient();
 
-  /// Gom nhóm số lượng bài báo theo năm từ API (Requirement 4.3)
   Future<Map<int, int>> fetchPublicationsGroupByYear(String query) async {
     final cleanQuery = query.trim();
     if (cleanQuery.isEmpty) {
       return const {};
     }
 
-    final data = await _client.get('/works', {
-      'search': cleanQuery,
-      'group_by': 'publication_year',
-    });
+    try {
+      final data = await _client.get('/works', {
+        'search': cleanQuery,
+        'group_by': 'publication_year',
+      });
 
-    final List groupByList = data['group_by'] ?? [];
-    final Map<int, int> distribution = {};
+      final List groupByList = data['group_by'] ?? [];
+      final distribution = <int, int>{};
 
-    for (var item in groupByList) {
-      if (item is Map) {
-        final yearStr = item['key'];
-        final countVal = item['count'];
-        if (yearStr != null && countVal != null) {
-          final year = int.tryParse(yearStr.toString());
-          final count = int.tryParse(countVal.toString());
-          if (year != null && count != null && year > 0) {
-            distribution[year] = count;
-          }
+      for (final item in groupByList) {
+        if (item is! Map) {
+          continue;
         }
+
+        final year = int.tryParse(item['key']?.toString() ?? '');
+        final count = int.tryParse(item['count']?.toString() ?? '');
+        if (year != null && count != null && year > 0) {
+          distribution[year] = count;
+        }
+      }
+
+      if (distribution.isNotEmpty) {
+        return _sortYearDistribution(distribution);
+      }
+    } catch (_) {
+      // Fallback below: use a small works sample and group locally.
+    }
+
+    return _fetchPublicationsGroupByYearFromSample(cleanQuery);
+  }
+
+  Future<List<Publication>> fetchTopInfluentialPublications(
+    String query, {
+    int perPage = 20,
+  }) async {
+    final cleanQuery = query.trim();
+    if (cleanQuery.isEmpty) {
+      return const [];
+    }
+
+    try {
+      final data = await _client.get('/works', {
+        'search': cleanQuery,
+        'sort': 'cited_by_count:desc',
+        'per_page': perPage.toString(),
+      });
+
+      final List results = data['results'] ?? [];
+      return results.map((json) => Publication.fromJson(json)).toList();
+    } catch (_) {
+      final publications = await fetchPublicationSample(cleanQuery, perPage: 50);
+      final sorted = List<Publication>.from(publications)
+        ..sort((a, b) => b.citationCount.compareTo(a.citationCount));
+      return sorted.take(perPage).toList();
+    }
+  }
+
+  Future<List<MapEntry<String, int>>> fetchTopResearchJournals(
+    String query, {
+    int perPage = 200,
+    int limit = 5,
+  }) async {
+    final grouped = await _tryFetchGroupedRanking(
+      query,
+      groupBy: 'primary_location.source.id',
+      limit: limit,
+    );
+    if (grouped.isNotEmpty) {
+      return grouped;
+    }
+
+    final publications = await fetchPublicationSample(query, perPage: perPage);
+    final journalMap = <String, int>{};
+
+    for (final publication in publications) {
+      final journalName = publication.journalName.trim();
+      if (journalName.isEmpty || journalName == 'Unknown Journal') {
+        continue;
+      }
+      journalMap[journalName] = (journalMap[journalName] ?? 0) + 1;
+    }
+
+    return _sortedTopEntries(journalMap, limit);
+  }
+
+  Future<List<MapEntry<String, int>>> fetchTopContributingAuthors(
+    String query, {
+    int perPage = 200,
+    int limit = 5,
+  }) async {
+    final grouped = await _tryFetchGroupedRanking(
+      query,
+      groupBy: 'authorships.author.id',
+      limit: limit,
+    );
+    if (grouped.isNotEmpty) {
+      return grouped;
+    }
+
+    final publications = await fetchPublicationSample(query, perPage: perPage);
+    final authorMap = <String, int>{};
+
+    for (final publication in publications) {
+      for (final author in publication.authors) {
+        final authorName = author.trim();
+        if (authorName.isEmpty) {
+          continue;
+        }
+        authorMap[authorName] = (authorMap[authorName] ?? 0) + 1;
       }
     }
 
-    // Sắp xếp tăng dần theo năm
-    return Map.fromEntries(
-      distribution.entries.toList()..sort((a, b) => a.key.compareTo(b.key)),
-    );
+    return _sortedTopEntries(authorMap, limit);
   }
 
-  /// Lấy danh sách bài báo trích dẫn cao nhất (Requirement 4.4)
-  Future<List<Publication>> fetchTopInfluentialPublications(String query, {int perPage = 20}) async {
+  Future<List<Publication>> fetchPublicationSample(
+    String query, {
+    required int perPage,
+  }) async {
     final cleanQuery = query.trim();
     if (cleanQuery.isEmpty) {
       return const [];
@@ -51,11 +138,85 @@ class TrendApiService {
 
     final data = await _client.get('/works', {
       'search': cleanQuery,
-      'sort': 'cited_by_count:desc',
       'per_page': perPage.toString(),
     });
 
     final List results = data['results'] ?? [];
     return results.map((json) => Publication.fromJson(json)).toList();
+  }
+
+  Future<Map<int, int>> _fetchPublicationsGroupByYearFromSample(
+    String query,
+  ) async {
+    final publications = await fetchPublicationSample(query, perPage: 50);
+    final distribution = <int, int>{};
+
+    for (final publication in publications) {
+      final year = publication.publicationYear;
+      if (year <= 0) {
+        continue;
+      }
+      distribution[year] = (distribution[year] ?? 0) + 1;
+    }
+
+    return _sortYearDistribution(distribution);
+  }
+
+  Map<int, int> _sortYearDistribution(Map<int, int> distribution) {
+    return Map.fromEntries(
+      distribution.entries.toList()..sort((a, b) => a.key.compareTo(b.key)),
+    );
+  }
+
+  Future<List<MapEntry<String, int>>> _tryFetchGroupedRanking(
+    String query, {
+    required String groupBy,
+    required int limit,
+  }) async {
+    final cleanQuery = query.trim();
+    if (cleanQuery.isEmpty) {
+      return const [];
+    }
+
+    try {
+      final data = await _client.get('/works', {
+        'search': cleanQuery,
+        'group_by': groupBy,
+      });
+
+      final List groupByList = data['group_by'] ?? [];
+      final entries = <MapEntry<String, int>>[];
+
+      for (final item in groupByList) {
+        if (item is! Map) {
+          continue;
+        }
+
+        final name = (item['key_display_name'] ?? item['key'])?.toString();
+        final count = int.tryParse(item['count']?.toString() ?? '');
+        if (name == null ||
+            name.isEmpty ||
+            name == 'null' ||
+            count == null ||
+            count <= 0) {
+          continue;
+        }
+        entries.add(MapEntry(name, count));
+      }
+
+      entries.sort((a, b) => b.value.compareTo(a.value));
+      return entries.take(limit).toList();
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  List<MapEntry<String, int>> _sortedTopEntries(
+    Map<String, int> counts,
+    int limit,
+  ) {
+    final entries = counts.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    return entries.take(limit).toList();
   }
 }

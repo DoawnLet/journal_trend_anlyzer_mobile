@@ -83,6 +83,10 @@ class _SearchPageState extends State<SearchPage> {
     SharedState.activeQueryNotifier.value = query;
   }
 
+  Future<void> _refreshSearch() async {
+    await widget.notifier.executeWorksFetchPipeline(showLoading: false);
+  }
+
   void _showFilterBottomSheet(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -143,9 +147,14 @@ class _SearchPageState extends State<SearchPage> {
 
           // Vùng hiển thị kết quả
           Expanded(
-            child: SearchResultsList(
-              notifier: widget.notifier,
-              scrollController: _scrollController,
+            child: RefreshIndicator(
+              color: const Color(0xFF80CBC4),
+              backgroundColor: const Color(0xFF1E4646),
+              onRefresh: _refreshSearch,
+              child: SearchResultsList(
+                notifier: widget.notifier,
+                scrollController: _scrollController,
+              ),
             ),
           ),
         ],

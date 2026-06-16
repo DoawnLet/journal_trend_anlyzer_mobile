@@ -120,10 +120,10 @@ class SearchNotifier {
     }
   }
 
-  Future<void> executeWorksFetchPipeline() async {
+  Future<void> executeWorksFetchPipeline({bool showLoading = true}) async {
     // Kích hoạt trạng thái Loading trên UI
     state = state.copyWith(
-      isLoading: true,
+      isLoading: showLoading ? true : state.isLoading,
       errorMessage: '',
     );
 
@@ -141,12 +141,12 @@ class SearchNotifier {
       // Cập nhật trạng thái thành công
       state = state.copyWith(
         publications: parsedPublications,
-        isLoading: false,
+        isLoading: showLoading ? false : state.isLoading,
       );
     } catch (e) {
       // Đẩy thông báo lỗi thân thiện ra ngoài UI nếu gặp sự cố
       state = state.copyWith(
-        isLoading: false,
+        isLoading: showLoading ? false : state.isLoading,
         errorMessage: ErrorTranslator.translate(e),
       );
     }

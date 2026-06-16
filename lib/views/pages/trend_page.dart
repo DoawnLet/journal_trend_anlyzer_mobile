@@ -108,6 +108,13 @@ class _TrendPageState extends State<TrendPage> {
     );
   }
 
+  Future<void> _refreshTrend() async {
+    await widget.notifier.fetchTrendData(
+      SharedState.activeQueryNotifier.value,
+      showLoading: false,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -188,26 +195,58 @@ class _TrendPageState extends State<TrendPage> {
           ),
           
           Expanded(
-            child: ListenableBuilder(
-              listenable: widget.notifier,
-              builder: (context, _) {
+            child: RefreshIndicator(
+              color: const Color(0xFF80CBC4),
+              backgroundColor: const Color(0xFF1E4646),
+              onRefresh: _refreshTrend,
+              child: ListenableBuilder(
+                listenable: widget.notifier,
+                builder: (context, _) {
                 if (widget.notifier.isLoading) {
-                  return const Center(
-                    child: CircularProgressIndicator(
-                      color: Colors.white,
-                    ),
+                  return ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    children: const [
+                      SizedBox(
+                        height: 420,
+                        child: Center(
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ],
                   );
                 }
 
                 if (widget.notifier.errorMessage != null) {
-                  return _buildErrorState(theme, widget.notifier.errorMessage!);
+                  return ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    children: [
+                      SizedBox(
+                        height: 420,
+                        child: _buildErrorState(
+                          theme,
+                          widget.notifier.errorMessage!,
+                        ),
+                      ),
+                    ],
+                  );
                 }
 
-                if (widget.notifier.publications.isEmpty) {
-                  return _buildEmptyState(theme);
+                if (!widget.notifier.hasData) {
+                  return ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    children: [
+                      SizedBox(
+                        height: 420,
+                        child: _buildEmptyState(theme),
+                      ),
+                    ],
+                  );
                 }
 
                 return SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
                   padding: const EdgeInsets.only(left: 16.0, right: 16.0, bottom: 16.0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -287,19 +326,7 @@ class _TrendPageState extends State<TrendPage> {
                       ),
                       const SizedBox(height: 6),
                       _isLoadingTrending
-                          ? const SizedBox(
-                              height: 40,
-                              child: Center(
-                                child: SizedBox(
-                                  width: 16,
-                                  height: 16,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF80CBC4)),
-                                  ),
-                                ),
-                              ),
-                            )
+                          ? const SizedBox(height: 40)
                           : _trendingTopics.isEmpty
                               ? const SizedBox(
                                   height: 40,
@@ -409,7 +436,8 @@ class _TrendPageState extends State<TrendPage> {
                     ],
                   ),
                 );
-              },
+                },
+              ),
             ),
           ),
         ],
@@ -805,6 +833,11 @@ class _TrendPageState extends State<TrendPage> {
   }
 
   Widget _buildEmptyState(ThemeData theme) {
+    final activeQuery = SharedState.activeQueryNotifier.value.trim();
+    final message = activeQuery.isEmpty
+        ? 'Nhập từ khóa tìm kiếm để bắt đầu vẽ phân tích.'
+        : 'Không có dữ liệu phân tích cho "$activeQuery". Vui lòng thử chủ đề khác.';
+
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -816,10 +849,11 @@ class _TrendPageState extends State<TrendPage> {
           ),
           const SizedBox(height: 16),
           Text(
-            'Nhập từ khóa tìm kiếm để bắt đầu vẽ phân tích.',
+            message,
             style: theme.textTheme.titleMedium?.copyWith(
               color: Colors.white,
             ),
+            textAlign: TextAlign.center,
           ),
         ],
       ),

@@ -32,7 +32,7 @@ class OpenAlexClient {
         'Accept': 'application/json',
         'User-Agent': 'JournalTrendAnalyzerMobile/1.0',
       },
-    ).timeout(const Duration(seconds: 15));
+    ).timeout(const Duration(seconds: 30));
 
     if (response.statusCode == 200) {
       return json.decode(utf8.decode(response.bodyBytes));
