@@ -3,7 +3,7 @@ import 'package:fl_chart/fl_chart.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/utils/formatters.dart';
 import '../widgets/glass_card.dart';
-import '../widgets/topic_selector_bottom_sheet.dart';
+import '../widgets/research_taxonomy_selector.dart';
 import '../widgets/works_list_bottom_sheet.dart';
 import '../state_management/trend_notifier.dart';
 import '../state_management/shared_state.dart';
@@ -104,7 +104,7 @@ class _TrendPageState extends State<TrendPage> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => const TopicSelectorBottomSheet(),
+      builder: (context) => const ResearchTaxonomySelector(),
     );
   }
 
@@ -148,6 +148,10 @@ class _TrendPageState extends State<TrendPage> {
             child: ValueListenableBuilder<String>(
               valueListenable: SharedState.activeQueryNotifier,
               builder: (context, activeQuery, _) {
+                final scope = SharedState.activeResearchScopeNotifier.value;
+                final activeLabel = scope.hasStructuredFilters
+                    ? scope.breadcrumb
+                    : (activeQuery.isEmpty ? 'Artificial Intelligence' : activeQuery);
                 return InkWell(
                   onTap: () => _showTopicSelector(context),
                   borderRadius: BorderRadius.circular(12),
@@ -163,14 +167,16 @@ class _TrendPageState extends State<TrendPage> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Chủ đề đang phân tích (Chọn để thay đổi)',
+                                scope.hasStructuredFilters
+                                    ? 'Research scope OpenAlex'
+                                    : 'Chủ đề đang phân tích (Chọn để thay đổi)',
                                 style: theme.textTheme.labelSmall?.copyWith(
                                   color: Colors.white60,
                                 ),
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                activeQuery.isEmpty ? 'Artificial Intelligence' : activeQuery,
+                                activeLabel,
                                 style: theme.textTheme.titleMedium?.copyWith(
                                   color: Colors.white,
                                   fontWeight: FontWeight.bold,
@@ -275,7 +281,7 @@ class _TrendPageState extends State<TrendPage> {
                                 color: Colors.transparent,
                                 child: InkWell(
                                   onTap: () {
-                                    SharedState.activeQueryNotifier.value = domain['name'];
+                                    SharedState.setKeyword(domain['name']);
                                   },
                                   borderRadius: BorderRadius.circular(16),
                                   child: Container(
@@ -361,7 +367,7 @@ class _TrendPageState extends State<TrendPage> {
                                             color: isSelected ? const Color(0xFF80CBC4) : Colors.white.withOpacity(0.12),
                                           ),
                                           onPressed: () {
-                                            SharedState.activeQueryNotifier.value = topic;
+                                            SharedState.setKeyword(topic);
                                           },
                                         ),
                                       );

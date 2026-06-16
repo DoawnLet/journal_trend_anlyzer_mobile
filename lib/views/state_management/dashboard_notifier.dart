@@ -15,6 +15,7 @@ class DashboardNotifier extends ChangeNotifier {
   DashboardNotifier({DashboardApiService? apiService})
       : _apiService = apiService ?? DashboardApiService() {
     SharedState.activeQueryNotifier.addListener(_onQueryChanged);
+    SharedState.activeResearchScopeNotifier.addListener(_onResearchScopeChanged);
     fetchDashboardData(SharedState.activeQueryNotifier.value);
   }
 
@@ -36,19 +37,33 @@ class DashboardNotifier extends ChangeNotifier {
   Publication? get mostInfluentialPaper => _stats.mostInfluentialPaper;
 
   void _onQueryChanged() {
+    final scope = SharedState.activeResearchScopeNotifier.value;
+    if (scope.hasStructuredFilters &&
+        scope.displayLabel == SharedState.activeQueryNotifier.value) {
+      return;
+    }
+    fetchDashboardData(SharedState.activeQueryNotifier.value);
+  }
+
+  void _onResearchScopeChanged() {
     fetchDashboardData(SharedState.activeQueryNotifier.value);
   }
 
   Future<void> fetchDashboardData(String query, {bool showLoading = true}) async {
-    final cleanQuery =
-        query.trim().isEmpty ? 'Artificial Intelligence' : query.trim();
+    final scope = SharedState.activeResearchScopeNotifier.value;
+    final cleanQuery = scope.hasStructuredFilters
+        ? scope.keyword
+        : (query.trim().isEmpty ? 'Artificial Intelligence' : query.trim());
 
     _isLoading = showLoading ? true : _isLoading;
     _errorMessage = null;
     notifyListeners();
 
     try {
-      _stats = await _apiService.fetchDashboardStats(cleanQuery);
+      _stats = await _apiService.fetchDashboardStats(
+        cleanQuery,
+        scope: scope,
+      );
     } catch (e) {
       _errorMessage = ErrorTranslator.translate(e);
       _stats = DashboardStats.empty;
@@ -63,6 +78,7 @@ class DashboardNotifier extends ChangeNotifier {
   @override
   void dispose() {
     SharedState.activeQueryNotifier.removeListener(_onQueryChanged);
+    SharedState.activeResearchScopeNotifier.removeListener(_onResearchScopeChanged);
     super.dispose();
   }
 }

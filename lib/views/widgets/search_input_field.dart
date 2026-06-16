@@ -18,7 +18,7 @@ class SearchInputField extends StatelessWidget {
       onSubmitted: (_) => onSearchTriggered(),
       style: const TextStyle(color: Colors.white),
       decoration: InputDecoration(
-        hintText: 'Nhập từ khóa (vd: Machine Learning, Quantum...)',
+        hintText: 'Nhập topic, keyword hoặc DOI để tìm publications...',
         prefixIcon: const Icon(Icons.search_rounded, color: Colors.white70),
         suffixIcon: IconButton(
           icon: const Icon(Icons.arrow_forward_rounded, color: Colors.white),

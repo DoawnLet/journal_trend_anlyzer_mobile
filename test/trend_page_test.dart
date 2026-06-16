@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:journal_trend_analysis_mb/views/pages/trend_page.dart';
 import 'package:journal_trend_analysis_mb/views/state_management/trend_notifier.dart';
 import 'package:journal_trend_analysis_mb/views/models/publication_model.dart';
+import 'package:journal_trend_analysis_mb/views/models/research_scope_model.dart';
 import 'package:journal_trend_analysis_mb/views/models/trend_rank_item_model.dart';
 import 'package:journal_trend_analysis_mb/views/services/trend_api_service.dart';
 import 'package:journal_trend_analysis_mb/views/state_management/shared_state.dart';
@@ -35,18 +36,26 @@ class FakeTrendApiService implements TrendApiService {
   ];
 
   @override
-  Future<Map<int, int>> fetchPublicationsGroupByYear(String query) async {
+  Future<Map<int, int>> fetchPublicationsGroupByYear(
+    String query, {
+    ResearchScope scope = ResearchScope.empty,
+  }) async {
     return {2021: 10, 2022: 20, 2023: 15};
   }
 
   @override
-  Future<List<Publication>> fetchTopInfluentialPublications(String query, {int perPage = 20}) async {
+  Future<List<Publication>> fetchTopInfluentialPublications(
+    String query, {
+    ResearchScope scope = ResearchScope.empty,
+    int perPage = 20,
+  }) async {
     return publications;
   }
 
   @override
   Future<List<TrendRankItem>> fetchTopResearchJournals(
     String query, {
+    ResearchScope scope = ResearchScope.empty,
     int perPage = 200,
     int limit = 5,
   }) async {
@@ -59,6 +68,7 @@ class FakeTrendApiService implements TrendApiService {
   @override
   Future<List<TrendRankItem>> fetchTopContributingAuthors(
     String query, {
+    ResearchScope scope = ResearchScope.empty,
     int perPage = 200,
     int limit = 5,
   }) async {
@@ -72,6 +82,7 @@ class FakeTrendApiService implements TrendApiService {
   Future<List<Publication>> fetchPublicationsByJournalId(
     String query,
     String journalId, {
+    ResearchScope scope = ResearchScope.empty,
     int perPage = 20,
   }) async {
     return publications
@@ -83,6 +94,7 @@ class FakeTrendApiService implements TrendApiService {
   Future<List<Publication>> fetchPublicationsByAuthorId(
     String query,
     String authorId, {
+    ResearchScope scope = ResearchScope.empty,
     int perPage = 20,
   }) async {
     return publications
@@ -93,6 +105,7 @@ class FakeTrendApiService implements TrendApiService {
   @override
   Future<List<Publication>> fetchPublicationSample(
     String query, {
+    ResearchScope scope = ResearchScope.empty,
     required int perPage,
   }) async {
     return publications;

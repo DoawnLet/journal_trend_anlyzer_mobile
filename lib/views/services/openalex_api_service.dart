@@ -1,5 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../models/publication_filter_model.dart';
+import 'openalex_query_builder.dart';
 
 class OpenAlexApiService {
   final String _baseUrl = "https://api.openalex.org";
@@ -146,11 +148,42 @@ class OpenAlexApiService {
   }
 
   /// Pipeline 3: Fetch Works filtered by multiple parameters and sorting
+  Future<Map<String, dynamic>> getWorksByPublicationFilter(
+    PublicationFilter filter, {
+    int perPage = 50,
+  }) async {
+    try {
+      final uri = OpenAlexQueryBuilder.buildWorksUri(
+        filter,
+        perPage: perPage,
+        mailto: _mailto,
+      );
+      final response = await _get(uri);
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      } else {
+        throw Exception('OpenAlex Works Filtered Error: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Failed to fetch filtered works list: $e');
+    }
+  }
+
   Future<Map<String, dynamic>> getWorksFiltered({
     String query = '',
     String? authorId,
     String? conceptId,
     String? topicId,
+    String? taxonomyFilter,
+    String? sourceId,
+    String? institutionId,
+    String? funderId,
+    int? yearFrom,
+    int? yearTo,
+    String? publicationType,
+    bool? isOpenAccess,
+    int? minCitationCount,
     String? sortBy,
     int perPage = 20,
   }) async {
@@ -164,6 +197,30 @@ class OpenAlexApiService {
       }
       if (topicId != null && topicId.isNotEmpty) {
         filters.add("primary_topic.id:$topicId");
+      }
+      if (taxonomyFilter != null && taxonomyFilter.isNotEmpty) {
+        filters.add(taxonomyFilter);
+      }
+      if (sourceId != null && sourceId.isNotEmpty) {
+        filters.add("primary_location.source.id:$sourceId");
+      }
+      if (institutionId != null && institutionId.isNotEmpty) {
+        filters.add("authorships.institutions.id:$institutionId");
+      }
+      if (funderId != null && funderId.isNotEmpty) {
+        filters.add("grants.funder:$funderId");
+      }
+      if (yearFrom != null || yearTo != null) {
+        filters.add("publication_year:${yearFrom ?? ''}-${yearTo ?? ''}");
+      }
+      if (publicationType != null && publicationType.isNotEmpty) {
+        filters.add("type:$publicationType");
+      }
+      if (isOpenAccess != null) {
+        filters.add("is_oa:$isOpenAccess");
+      }
+      if (minCitationCount != null) {
+        filters.add("cited_by_count:>$minCitationCount");
       }
 
       final Map<String, String> queryParams = {

@@ -53,8 +53,7 @@ class CustomBottomNavBar extends StatelessWidget {
             children: [
               _buildNavItem(context, 0, Icons.home_rounded, 'Trang chủ'),
               _buildNavItem(context, 1, Icons.search_rounded, 'Tìm kiếm'),
-              _buildNavItem(context, 2, Icons.insights_rounded, 'Xu hướng'),
-              _buildNavItem(context, 3, Icons.dashboard_rounded, 'Phân tích'),
+              _buildNavItem(context, 2, Icons.insights_rounded, 'Research'),
             ],
           ),
         ),

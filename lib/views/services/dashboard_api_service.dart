@@ -1,6 +1,8 @@
 import '../models/dashboard_stats_model.dart';
 import '../models/publication_model.dart';
+import '../models/research_scope_model.dart';
 import 'openalex_client.dart';
+import 'openalex_query_builder.dart';
 
 class DashboardApiService {
   final OpenAlexClient _client;
@@ -10,22 +12,36 @@ class DashboardApiService {
 
   Future<DashboardStats> fetchDashboardStats(
     String query, {
+    ResearchScope scope = ResearchScope.empty,
     int samplePerPage = 50,
   }) async {
     final cleanQuery = query.trim();
-    if (cleanQuery.isEmpty) {
+    if (cleanQuery.isEmpty && !scope.hasSearchableInput) {
       return DashboardStats.empty;
     }
 
     final results = await Future.wait([
-      _fetchMetaCount(cleanQuery).catchError((_) => 0),
-      _fetchMostActiveYear(cleanQuery).catchError((_) => 0),
-      _fetchMostInfluentialPaper(cleanQuery).catchError((_) => null),
-      _fetchGroupedRanking(cleanQuery, groupBy: 'primary_location.source.id')
+      _fetchMetaCount(cleanQuery, scope: scope).catchError((_) => 0),
+      _fetchMostActiveYear(cleanQuery, scope: scope).catchError((_) => 0),
+      _fetchMostInfluentialPaper(cleanQuery, scope: scope)
+          .catchError((_) => null),
+      _fetchGroupedRanking(
+        cleanQuery,
+        scope: scope,
+        groupBy: 'primary_location.source.id',
+      )
           .catchError((_) => const MapEntry('N/A', 0)),
-      _fetchGroupedRanking(cleanQuery, groupBy: 'authorships.author.id')
+      _fetchGroupedRanking(
+        cleanQuery,
+        scope: scope,
+        groupBy: 'authorships.author.id',
+      )
           .catchError((_) => const MapEntry('N/A', 0)),
-      fetchDashboardPublications(cleanQuery, perPage: samplePerPage)
+      fetchDashboardPublications(
+        cleanQuery,
+        scope: scope,
+        perPage: samplePerPage,
+      )
           .catchError((_) => <Publication>[]),
     ]);
 
@@ -58,38 +74,53 @@ class DashboardApiService {
 
   Future<List<Publication>> fetchDashboardPublications(
     String query, {
+    ResearchScope scope = ResearchScope.empty,
     int perPage = 50,
   }) async {
     final cleanQuery = query.trim();
-    if (cleanQuery.isEmpty) {
+    if (cleanQuery.isEmpty && !scope.hasSearchableInput) {
       return const [];
     }
 
-    final data = await _client.get('/works', {
-      'search': cleanQuery,
-      'per_page': perPage.toString(),
-    });
+    final data = await _client.get(
+      '/works',
+      OpenAlexQueryBuilder.worksParams(
+        scope: scope,
+        query: cleanQuery,
+        perPage: perPage,
+      ),
+    );
 
     final List results = data['results'] ?? [];
     return results.map((json) => Publication.fromJson(json)).toList();
   }
 
-  Future<int> _fetchMetaCount(String query) async {
-    final data = await _client.get('/works', {
-      'search': query,
-      'per_page': '1',
-    });
+  Future<int> _fetchMetaCount(
+    String query, {
+    ResearchScope scope = ResearchScope.empty,
+  }) async {
+    final data = await _client.get(
+      '/works',
+      OpenAlexQueryBuilder.worksParams(scope: scope, query: query, perPage: 1),
+    );
 
     final meta = data['meta'];
     final count = meta is Map ? meta['count'] : null;
     return int.tryParse(count?.toString() ?? '') ?? 0;
   }
 
-  Future<int> _fetchMostActiveYear(String query) async {
-    final data = await _client.get('/works', {
-      'search': query,
-      'group_by': 'publication_year',
-    });
+  Future<int> _fetchMostActiveYear(
+    String query, {
+    ResearchScope scope = ResearchScope.empty,
+  }) async {
+    final data = await _client.get(
+      '/works',
+      OpenAlexQueryBuilder.worksParams(
+        scope: scope,
+        query: query,
+        groupBy: 'publication_year',
+      ),
+    );
 
     final List groupByList = data['group_by'] ?? [];
     var year = 0;
@@ -114,12 +145,19 @@ class DashboardApiService {
     return year;
   }
 
-  Future<Publication?> _fetchMostInfluentialPaper(String query) async {
-    final data = await _client.get('/works', {
-      'search': query,
-      'sort': 'cited_by_count:desc',
-      'per_page': '1',
-    });
+  Future<Publication?> _fetchMostInfluentialPaper(
+    String query, {
+    ResearchScope scope = ResearchScope.empty,
+  }) async {
+    final data = await _client.get(
+      '/works',
+      OpenAlexQueryBuilder.worksParams(
+        scope: scope,
+        query: query,
+        sort: 'cited_by_count:desc',
+        perPage: 1,
+      ),
+    );
 
     final List results = data['results'] ?? [];
     if (results.isEmpty) {
@@ -131,13 +169,18 @@ class DashboardApiService {
 
   Future<MapEntry<String, int>> _fetchGroupedRanking(
     String query, {
+    ResearchScope scope = ResearchScope.empty,
     required String groupBy,
   }) async {
     try {
-      final data = await _client.get('/works', {
-        'search': query,
-        'group_by': groupBy,
-      });
+      final data = await _client.get(
+        '/works',
+        OpenAlexQueryBuilder.worksParams(
+          scope: scope,
+          query: query,
+          groupBy: groupBy,
+        ),
+      );
 
       final List groupByList = data['group_by'] ?? [];
       for (final item in groupByList) {

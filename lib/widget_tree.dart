@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 import 'views/pages/home_page.dart';
 import 'views/pages/search_page.dart';
-import 'views/pages/trend_page.dart';
-import 'views/pages/dashboard_page.dart';
+import 'views/pages/research_trend_analysis_screen.dart';
 import 'views/state_management/home_notifier.dart';
 import 'views/state_management/search_notifier.dart';
 import 'views/state_management/trend_notifier.dart';
-import 'views/state_management/dashboard_notifier.dart';
 import 'views/state_management/shared_state.dart';
 import 'views/widgets/custom_bottom_nav_bar.dart';
 
@@ -26,7 +24,6 @@ class _WidgetTreeState extends State<WidgetTree> {
   late final HomeNotifier _homeNotifier;
   late final SearchNotifier _searchNotifier;
   late final TrendNotifier _trendNotifier;
-  late final DashboardNotifier _dashboardNotifier;
 
   @override
   void initState() {
@@ -34,11 +31,10 @@ class _WidgetTreeState extends State<WidgetTree> {
     _homeNotifier = HomeNotifier();
     _searchNotifier = SearchNotifier();
     _trendNotifier = TrendNotifier();
-    _dashboardNotifier = DashboardNotifier();
     
     // Đăng ký lắng nghe sự thay đổi của tab hoạt động toàn cục
     SharedState.activeTabNotifier.addListener(_onTabChanged);
-    _currentIndex = SharedState.activeTabNotifier.value;
+    _currentIndex = SharedState.activeTabNotifier.value.clamp(0, 2);
   }
 
   @override
@@ -47,14 +43,13 @@ class _WidgetTreeState extends State<WidgetTree> {
     _homeNotifier.dispose();
     _searchNotifier.dispose();
     _trendNotifier.dispose();
-    _dashboardNotifier.dispose();
     super.dispose();
   }
 
   void _onTabChanged() {
     if (mounted) {
       setState(() {
-        _currentIndex = SharedState.activeTabNotifier.value;
+        _currentIndex = SharedState.activeTabNotifier.value.clamp(0, 2);
       });
     }
   }
@@ -65,8 +60,7 @@ class _WidgetTreeState extends State<WidgetTree> {
     final List<Widget> pages = [
       HomePage(notifier: _homeNotifier, searchNotifier: _searchNotifier),
       SearchPage(notifier: _searchNotifier),
-      TrendPage(notifier: _trendNotifier),
-      DashboardPage(notifier: _dashboardNotifier),
+      ResearchTrendAnalysisScreen(notifier: _trendNotifier),
     ];
 
     return Scaffold(
@@ -77,7 +71,7 @@ class _WidgetTreeState extends State<WidgetTree> {
       bottomNavigationBar: CustomBottomNavBar(
         currentIndex: _currentIndex,
         onTap: (index) {
-          SharedState.activeTabNotifier.value = index;
+          SharedState.activeTabNotifier.value = index.clamp(0, pages.length - 1);
         },
       ),
     );

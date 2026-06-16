@@ -245,7 +245,7 @@ class _TopicSelectorBottomSheetState extends State<TopicSelectorBottomSheet> {
                           color: isSelected ? const Color(0xFF80CBC4) : Colors.white.withOpacity(0.1),
                         ),
                         onPressed: () {
-                          SharedState.activeQueryNotifier.value = topic;
+                          SharedState.setKeyword(topic);
                           Navigator.pop(context);
                         },
                       );
@@ -287,7 +287,7 @@ class _TopicSelectorBottomSheetState extends State<TopicSelectorBottomSheet> {
                       ),
                       trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 12, color: Colors.white38),
                       onTap: () {
-                        SharedState.activeQueryNotifier.value = name;
+                        SharedState.setKeyword(name);
                         Navigator.pop(context);
                       },
                     );

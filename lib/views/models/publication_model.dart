@@ -10,6 +10,12 @@ class Publication {
   final String abstractText;
   final List<String> concepts;
   final List<String> topics;
+  final bool isOpenAccess;
+  final String? publicationType;
+  final String? primaryTopic;
+  final String? subfield;
+  final String? field;
+  final String? domain;
 
   const Publication({
     required this.id,
@@ -22,6 +28,12 @@ class Publication {
     required this.abstractText,
     required this.concepts,
     required this.topics,
+    this.isOpenAccess = false,
+    this.publicationType,
+    this.primaryTopic,
+    this.subfield,
+    this.field,
+    this.domain,
   });
 
   /// Khởi tạo đối tượng Publication từ cấu trúc JSON trả về của OpenAlex API.
@@ -62,6 +74,7 @@ class Publication {
         abstractText: desc,
         concepts: const [],
         topics: const [],
+        publicationType: 'publisher',
       );
     }
 
@@ -115,13 +128,30 @@ class Publication {
       }
     }
     final primaryTopic = json['primary_topic'];
+    String? parsedPrimaryTopic;
+    String? parsedSubfield;
+    String? parsedField;
+    String? parsedDomain;
     if (primaryTopic is Map) {
       final name = primaryTopic['display_name'];
       if (name != null) {
         final nameStr = name.toString();
+        parsedPrimaryTopic = nameStr;
         if (!parsedTopics.contains(nameStr)) {
           parsedTopics.insert(0, nameStr);
         }
+      }
+      final subfield = primaryTopic['subfield'];
+      final field = primaryTopic['field'];
+      final domain = primaryTopic['domain'];
+      if (subfield is Map) {
+        parsedSubfield = subfield['display_name']?.toString();
+      }
+      if (field is Map) {
+        parsedField = field['display_name']?.toString();
+      }
+      if (domain is Map) {
+        parsedDomain = domain['display_name']?.toString();
       }
     }
 
@@ -136,6 +166,14 @@ class Publication {
       abstractText: parsedAbstract,
       concepts: parsedConcepts,
       topics: parsedTopics,
+      isOpenAccess: json['open_access'] is Map
+          ? json['open_access']['is_oa'] == true
+          : false,
+      publicationType: json['type']?.toString(),
+      primaryTopic: parsedPrimaryTopic,
+      subfield: parsedSubfield,
+      field: parsedField,
+      domain: parsedDomain,
     );
   }
 

@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
+
 import '../../core/utils/error_translator.dart';
+import '../models/publication_filter_model.dart';
 import '../models/publication_model.dart';
+import '../models/research_taxonomy_model.dart';
 import '../services/openalex_api_service.dart';
+import '../services/publication_filter_service.dart';
 import 'shared_state.dart';
 
-// Class gom cụm trạng thái
 class SearchState {
   final List<Publication> publications;
+  final List<Publication> originalPublications;
   final bool isLoading;
   final String errorMessage;
   final String searchQuery;
@@ -16,10 +20,12 @@ class SearchState {
   final String? selectedConceptName;
   final String? selectedTopicId;
   final String? selectedTopicName;
-  final String? sortBy; // 'publication_date:desc', 'publication_date:asc', or null
+  final String? sortBy;
+  final PublicationFilter filter;
 
-  SearchState({
+  const SearchState({
     this.publications = const [],
+    this.originalPublications = const [],
     this.isLoading = false,
     this.errorMessage = '',
     this.searchQuery = '',
@@ -30,10 +36,12 @@ class SearchState {
     this.selectedTopicId,
     this.selectedTopicName,
     this.sortBy,
+    this.filter = PublicationFilter.empty,
   });
 
   SearchState copyWith({
     List<Publication>? publications,
+    List<Publication>? originalPublications,
     bool? isLoading,
     String? errorMessage,
     String? searchQuery,
@@ -44,107 +52,151 @@ class SearchState {
     String? selectedTopicId,
     String? selectedTopicName,
     String? sortBy,
-    bool clearAuthorId = false,
-    bool clearAuthorName = false,
-    bool clearConceptId = false,
-    bool clearConceptName = false,
-    bool clearTopicId = false,
-    bool clearTopicName = false,
+    PublicationFilter? filter,
+    bool clearAuthor = false,
+    bool clearConcept = false,
+    bool clearTopic = false,
     bool clearSortBy = false,
   }) {
     return SearchState(
       publications: publications ?? this.publications,
+      originalPublications: originalPublications ?? this.originalPublications,
       isLoading: isLoading ?? this.isLoading,
       errorMessage: errorMessage ?? this.errorMessage,
       searchQuery: searchQuery ?? this.searchQuery,
-      selectedAuthorId: clearAuthorId ? null : (selectedAuthorId ?? this.selectedAuthorId),
-      selectedAuthorName: clearAuthorName ? null : (selectedAuthorName ?? this.selectedAuthorName),
-      selectedConceptId: clearConceptId ? null : (selectedConceptId ?? this.selectedConceptId),
-      selectedConceptName: clearConceptName ? null : (selectedConceptName ?? this.selectedConceptName),
-      selectedTopicId: clearTopicId ? null : (selectedTopicId ?? this.selectedTopicId),
-      selectedTopicName: clearTopicName ? null : (selectedTopicName ?? this.selectedTopicName),
+      selectedAuthorId: clearAuthor ? null : (selectedAuthorId ?? this.selectedAuthorId),
+      selectedAuthorName:
+          clearAuthor ? null : (selectedAuthorName ?? this.selectedAuthorName),
+      selectedConceptId:
+          clearConcept ? null : (selectedConceptId ?? this.selectedConceptId),
+      selectedConceptName: clearConcept
+          ? null
+          : (selectedConceptName ?? this.selectedConceptName),
+      selectedTopicId: clearTopic ? null : (selectedTopicId ?? this.selectedTopicId),
+      selectedTopicName:
+          clearTopic ? null : (selectedTopicName ?? this.selectedTopicName),
       sortBy: clearSortBy ? null : (sortBy ?? this.sortBy),
+      filter: filter ?? this.filter,
     );
   }
 }
 
 class SearchNotifier {
   final OpenAlexApiService _openAlexApiService = OpenAlexApiService();
-  
-  // Biến trạng thái duy nhất dùng để lắng nghe ở UI
-  final ValueNotifier<SearchState> stateNotifier = ValueNotifier(SearchState());
+  bool _syncingFilter = false;
+
+  final ValueNotifier<SearchState> stateNotifier =
+      ValueNotifier<SearchState>(const SearchState());
 
   SearchState get state => stateNotifier.value;
   set state(SearchState newValue) => stateNotifier.value = newValue;
 
   SearchNotifier() {
-    // Đăng ký lắng nghe sự thay đổi của từ khóa tìm kiếm toàn cục
     SharedState.activeQueryNotifier.addListener(_onQueryChanged);
-    // Kích hoạt tìm kiếm ban đầu
+    SharedState.activeResearchScopeNotifier.addListener(_onResearchScopeChanged);
+    SharedState.publicationFilterNotifier.addListener(_onFilterChanged);
     executeWorksFetchPipeline();
   }
 
   void _onQueryChanged() {
-    final newQuery = SharedState.activeQueryNotifier.value;
-    
-    if (newQuery.startsWith('Author: ')) {
-      final name = newQuery.substring('Author: '.length).trim();
-      if (state.selectedAuthorName == name) {
-        return; // Đã được xử lý bởi setAuthorFilter
-      }
+    final keyword = SharedState.activeQueryNotifier.value.trim();
+    final scope = SharedState.activeResearchScopeNotifier.value;
+    if (scope.hasStructuredFilters && scope.displayLabel == keyword) {
       return;
     }
 
-    if (state.selectedConceptName == newQuery) {
-      return; // Đã được xử lý bởi setConceptFilter
+    final current = SharedState.publicationFilterNotifier.value;
+    _setSharedFilter(current.reset(keyword: keyword));
+  }
+
+  void _onResearchScopeChanged() {
+    final scope = SharedState.activeResearchScopeNotifier.value;
+    if (!scope.hasStructuredFilters) {
+      return;
     }
 
-    if (state.selectedTopicName == newQuery) {
-      return; // Đã được xử lý bởi setTopicFilter
+    final current = SharedState.publicationFilterNotifier.value;
+    _setSharedFilter(
+      current.copyWith(
+        keyword: scope.keyword,
+        taxonomy: scope.taxonomy,
+        fromYear: scope.yearFrom,
+        toYear: scope.yearTo,
+        minCitations: scope.minCitationCount,
+        openAccessOnly: scope.isOpenAccess == true,
+        publicationType: scope.publicationType ?? current.publicationType,
+      ),
+    );
+  }
+
+  void _onFilterChanged() {
+    if (_syncingFilter) {
+      return;
     }
 
-    if (state.selectedAuthorId != null || 
-        state.selectedConceptId != null ||
-        state.selectedTopicId != null ||
-        state.searchQuery != newQuery) {
-      state = state.copyWith(
-        searchQuery: newQuery,
-        clearAuthorId: true,
-        clearAuthorName: true,
-        clearConceptId: true,
-        clearConceptName: true,
-        clearTopicId: true,
-        clearTopicName: true,
-      );
+    final nextFilter = SharedState.publicationFilterNotifier.value;
+    final previousFilter = state.filter;
+    state = state.copyWith(
+      filter: nextFilter,
+      searchQuery: nextFilter.keyword,
+      selectedAuthorName: nextFilter.selectedAuthors.isEmpty
+          ? null
+          : nextFilter.selectedAuthors.first,
+      sortBy: nextFilter.openAlexSort,
+      clearAuthor: nextFilter.selectedAuthors.isEmpty,
+    );
+
+    if (_requiresApiReload(previousFilter, nextFilter)) {
       executeWorksFetchPipeline();
+    } else {
+      _applyLocalFilters(nextFilter);
     }
   }
 
+  bool _requiresApiReload(
+    PublicationFilter previous,
+    PublicationFilter next,
+  ) {
+    return previous.keyword != next.keyword ||
+        previous.fromYear != next.fromYear ||
+        previous.toYear != next.toYear ||
+        previous.minCitations != next.minCitations ||
+        previous.openAccessOnly != next.openAccessOnly ||
+        previous.publicationType != next.publicationType ||
+        previous.sortBy != next.sortBy ||
+        previous.taxonomy != next.taxonomy;
+  }
+
   Future<void> executeWorksFetchPipeline({bool showLoading = true}) async {
-    // Kích hoạt trạng thái Loading trên UI
     state = state.copyWith(
       isLoading: showLoading ? true : state.isLoading,
       errorMessage: '',
     );
 
     try {
-      final data = await _openAlexApiService.getWorksFiltered(
-        query: state.searchQuery,
-        authorId: state.selectedAuthorId,
-        conceptId: state.selectedConceptId,
-        topicId: state.selectedTopicId,
-        sortBy: state.sortBy,
-      );
+      final filter = _effectiveFilter();
+      final data = await _openAlexApiService.getWorksByPublicationFilter(filter);
       final List results = data['results'] ?? [];
-      final parsedPublications = results.map((json) => Publication.fromJson(json)).toList();
+      final originalPublications =
+          results.map((json) => Publication.fromJson(json)).toList();
+      final filteredPublications =
+          PublicationFilterService.applyLocalFilters(originalPublications, filter);
 
-      // Cập nhật trạng thái thành công
+      SharedState.setOriginalPublications(originalPublications);
+      SharedState.setFilteredPublications(filteredPublications);
+
       state = state.copyWith(
-        publications: parsedPublications,
+        publications: filteredPublications,
+        originalPublications: originalPublications,
         isLoading: showLoading ? false : state.isLoading,
+        filter: filter,
+        searchQuery: filter.keyword,
+        selectedAuthorName:
+            filter.selectedAuthors.isEmpty ? null : filter.selectedAuthors.first,
+        sortBy: filter.openAlexSort,
+        clearAuthor: filter.selectedAuthors.isEmpty,
       );
     } catch (e) {
-      // Đẩy thông báo lỗi thân thiện ra ngoài UI nếu gặp sự cố
       state = state.copyWith(
         isLoading: showLoading ? false : state.isLoading,
         errorMessage: ErrorTranslator.translate(e),
@@ -152,85 +204,143 @@ class SearchNotifier {
     }
   }
 
-  // Tương thích ngược với các cuộc gọi trực tiếp cũ
+  PublicationFilter _effectiveFilter() {
+    final scope = SharedState.activeResearchScopeNotifier.value;
+    final sharedFilter = SharedState.publicationFilterNotifier.value;
+    return sharedFilter.copyWith(
+      keyword: scope.hasStructuredFilters ? scope.keyword : sharedFilter.keyword,
+      taxonomy:
+          scope.taxonomy.hasSelection ? scope.taxonomy : sharedFilter.taxonomy,
+      fromYear: scope.yearFrom ?? sharedFilter.fromYear,
+      toYear: scope.yearTo ?? sharedFilter.toYear,
+      minCitations: scope.minCitationCount ?? sharedFilter.minCitations,
+      openAccessOnly: scope.isOpenAccess == true || sharedFilter.openAccessOnly,
+      publicationType: scope.publicationType ?? sharedFilter.publicationType,
+    );
+  }
+
+  void _applyLocalFilters(PublicationFilter filter) {
+    final filteredPublications = PublicationFilterService.applyLocalFilters(
+      state.originalPublications,
+      filter,
+    );
+    SharedState.setFilteredPublications(filteredPublications);
+    state = state.copyWith(
+      publications: filteredPublications,
+      filter: filter,
+      selectedAuthorName:
+          filter.selectedAuthors.isEmpty ? null : filter.selectedAuthors.first,
+      clearAuthor: filter.selectedAuthors.isEmpty,
+    );
+  }
+
+  void _setSharedFilter(PublicationFilter filter) {
+    _syncingFilter = true;
+    SharedState.setPublicationFilter(filter);
+    _syncingFilter = false;
+    _onFilterChanged();
+  }
+
   Future<void> executeSearch(String keyword) async {
-    SharedState.activeQueryNotifier.value = keyword;
+    SharedState.setKeyword(keyword);
   }
 
   void setAuthorFilter(String id, String name) {
-    state = state.copyWith(
-      selectedAuthorId: id,
-      selectedAuthorName: name,
-      searchQuery: '', // Flush traditional query strings to avoid conflict
-    );
-    SharedState.activeQueryNotifier.value = 'Author: $name';
-    executeWorksFetchPipeline(); // Trigger immediate HTTP dispatch
+    final current = SharedState.publicationFilterNotifier.value;
+    _setSharedFilter(current.copyWith(selectedAuthors: [name]));
   }
 
   void clearAuthorFilter() {
-    state = state.copyWith(
-      clearAuthorId: true,
-      clearAuthorName: true,
-      searchQuery: '',
-    );
-    SharedState.activeQueryNotifier.value = '';
-    executeWorksFetchPipeline();
+    final current = SharedState.publicationFilterNotifier.value;
+    _setSharedFilter(current.copyWith(selectedAuthors: const []));
   }
 
   void setConceptFilter(String id, String name) {
+    SharedState.activeQueryNotifier.value = name;
     state = state.copyWith(
       selectedConceptId: id,
       selectedConceptName: name,
     );
-    SharedState.activeQueryNotifier.value = name;
-    executeWorksFetchPipeline();
   }
 
   void clearConceptFilter() {
-    state = state.copyWith(
-      clearConceptId: true,
-      clearConceptName: true,
-      searchQuery: '',
-    );
-    SharedState.activeQueryNotifier.value = '';
-    executeWorksFetchPipeline();
+    state = state.copyWith(clearConcept: true);
   }
 
   void setTopicFilter(String id, String name) {
+    SharedState.activeQueryNotifier.value = name;
     state = state.copyWith(
       selectedTopicId: id,
       selectedTopicName: name,
     );
-    SharedState.activeQueryNotifier.value = name;
-    executeWorksFetchPipeline();
   }
 
   void clearTopicFilter() {
-    state = state.copyWith(
-      clearTopicId: true,
-      clearTopicName: true,
-      searchQuery: '',
-    );
-    SharedState.activeQueryNotifier.value = '';
-    executeWorksFetchPipeline();
+    state = state.copyWith(clearTopic: true);
   }
 
   void setSortBy(String? sort) {
-    state = state.copyWith(
-      sortBy: sort,
-    );
-    executeWorksFetchPipeline();
+    final current = SharedState.publicationFilterNotifier.value;
+    final sortKey = switch (sort) {
+      'cited_by_count:desc' => 'most_cited',
+      'publication_date:desc' => 'newest',
+      'publication_date:asc' => 'oldest',
+      _ => 'relevance',
+    };
+    _setSharedFilter(current.copyWith(sortBy: sortKey));
   }
 
   void clearSortBy() {
-    state = state.copyWith(
-      clearSortBy: true,
+    final current = SharedState.publicationFilterNotifier.value;
+    _setSharedFilter(current.copyWith(sortBy: 'relevance'));
+  }
+
+  void setYearRange(int? fromYear, int? toYear) {
+    final current = SharedState.publicationFilterNotifier.value;
+    _setSharedFilter(current.copyWith(fromYear: fromYear, toYear: toYear));
+  }
+
+  void clearYearRange() {
+    final current = SharedState.publicationFilterNotifier.value;
+    _setSharedFilter(current.copyWith(clearYear: true));
+  }
+
+  void setMinCitations(int? value) {
+    final current = SharedState.publicationFilterNotifier.value;
+    _setSharedFilter(
+      current.copyWith(minCitations: value, clearCitations: value == null),
     );
-    executeWorksFetchPipeline();
+  }
+
+  void setOpenAccessOnly(bool value) {
+    final current = SharedState.publicationFilterNotifier.value;
+    _setSharedFilter(current.copyWith(openAccessOnly: value));
+  }
+
+  void setPublicationType(String value) {
+    final current = SharedState.publicationFilterNotifier.value;
+    _setSharedFilter(current.copyWith(publicationType: value));
+  }
+
+  void setJournalFilter(List<String> journals) {
+    final current = SharedState.publicationFilterNotifier.value;
+    _setSharedFilter(current.copyWith(selectedJournals: journals));
+  }
+
+  void setTaxonomyFilter(ResearchTaxonomySelection taxonomy) {
+    final current = SharedState.publicationFilterNotifier.value;
+    _setSharedFilter(current.copyWith(taxonomy: taxonomy));
+  }
+
+  void clearAllFilters() {
+    final keyword = SharedState.publicationFilterNotifier.value.keyword;
+    _setSharedFilter(PublicationFilter.empty.copyWith(keyword: keyword));
   }
 
   void dispose() {
     SharedState.activeQueryNotifier.removeListener(_onQueryChanged);
+    SharedState.activeResearchScopeNotifier.removeListener(_onResearchScopeChanged);
+    SharedState.publicationFilterNotifier.removeListener(_onFilterChanged);
     stateNotifier.dispose();
   }
 }

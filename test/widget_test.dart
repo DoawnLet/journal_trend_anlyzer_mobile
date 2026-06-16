@@ -7,6 +7,6 @@ void main() {
     await tester.pumpWidget(const MyApp());
 
     // Verify that the App Bar contains the title of the home page
-    expect(find.text('Journal Trend Analyzer'), findsOneWidget);
+    expect(find.text('Research Home'), findsOneWidget);
   });
 }

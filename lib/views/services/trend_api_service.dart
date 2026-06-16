@@ -1,23 +1,32 @@
 import '../models/publication_model.dart';
+import '../models/research_scope_model.dart';
 import '../models/trend_rank_item_model.dart';
 import 'openalex_client.dart';
+import 'openalex_query_builder.dart';
 
 class TrendApiService {
   final OpenAlexClient _client;
 
   TrendApiService({OpenAlexClient? client}) : _client = client ?? OpenAlexClient();
 
-  Future<Map<int, int>> fetchPublicationsGroupByYear(String query) async {
+  Future<Map<int, int>> fetchPublicationsGroupByYear(
+    String query, {
+    ResearchScope scope = ResearchScope.empty,
+  }) async {
     final cleanQuery = query.trim();
-    if (cleanQuery.isEmpty) {
+    if (cleanQuery.isEmpty && !scope.hasSearchableInput) {
       return const {};
     }
 
     try {
-      final data = await _client.get('/works', {
-        'search': cleanQuery,
-        'group_by': 'publication_year',
-      });
+      final data = await _client.get(
+        '/works',
+        OpenAlexQueryBuilder.worksParams(
+          scope: scope,
+          query: cleanQuery,
+          groupBy: 'publication_year',
+        ),
+      );
 
       final List groupByList = data['group_by'] ?? [];
       final distribution = <int, int>{};
@@ -41,29 +50,38 @@ class TrendApiService {
       // Fallback below: use a small works sample and group locally.
     }
 
-    return _fetchPublicationsGroupByYearFromSample(cleanQuery);
+    return _fetchPublicationsGroupByYearFromSample(cleanQuery, scope: scope);
   }
 
   Future<List<Publication>> fetchTopInfluentialPublications(
     String query, {
+    ResearchScope scope = ResearchScope.empty,
     int perPage = 20,
   }) async {
     final cleanQuery = query.trim();
-    if (cleanQuery.isEmpty) {
+    if (cleanQuery.isEmpty && !scope.hasSearchableInput) {
       return const [];
     }
 
     try {
-      final data = await _client.get('/works', {
-        'search': cleanQuery,
-        'sort': 'cited_by_count:desc',
-        'per_page': perPage.toString(),
-      });
+      final data = await _client.get(
+        '/works',
+        OpenAlexQueryBuilder.worksParams(
+          scope: scope,
+          query: cleanQuery,
+          sort: 'cited_by_count:desc',
+          perPage: perPage,
+        ),
+      );
 
       final List results = data['results'] ?? [];
       return results.map((json) => Publication.fromJson(json)).toList();
     } catch (_) {
-      final publications = await fetchPublicationSample(cleanQuery, perPage: 50);
+      final publications = await fetchPublicationSample(
+        cleanQuery,
+        scope: scope,
+        perPage: 50,
+      );
       final sorted = List<Publication>.from(publications)
         ..sort((a, b) => b.citationCount.compareTo(a.citationCount));
       return sorted.take(perPage).toList();
@@ -72,11 +90,13 @@ class TrendApiService {
 
   Future<List<TrendRankItem>> fetchTopResearchJournals(
     String query, {
+    ResearchScope scope = ResearchScope.empty,
     int perPage = 200,
     int limit = 5,
   }) async {
     final grouped = await _tryFetchGroupedRanking(
       query,
+      scope: scope,
       groupBy: 'primary_location.source.id',
       limit: limit,
     );
@@ -84,7 +104,11 @@ class TrendApiService {
       return grouped;
     }
 
-    final publications = await fetchPublicationSample(query, perPage: perPage);
+    final publications = await fetchPublicationSample(
+      query,
+      scope: scope,
+      perPage: perPage,
+    );
     final journalMap = <String, int>{};
 
     for (final publication in publications) {
@@ -100,11 +124,13 @@ class TrendApiService {
 
   Future<List<TrendRankItem>> fetchTopContributingAuthors(
     String query, {
+    ResearchScope scope = ResearchScope.empty,
     int perPage = 200,
     int limit = 5,
   }) async {
     final grouped = await _tryFetchGroupedRanking(
       query,
+      scope: scope,
       groupBy: 'authorships.author.id',
       limit: limit,
     );
@@ -112,7 +138,11 @@ class TrendApiService {
       return grouped;
     }
 
-    final publications = await fetchPublicationSample(query, perPage: perPage);
+    final publications = await fetchPublicationSample(
+      query,
+      scope: scope,
+      perPage: perPage,
+    );
     final authorMap = <String, int>{};
 
     for (final publication in publications) {
@@ -131,11 +161,13 @@ class TrendApiService {
   Future<List<Publication>> fetchPublicationsByJournalId(
     String query,
     String journalId, {
+    ResearchScope scope = ResearchScope.empty,
     int perPage = 20,
   }) {
     return _fetchPublicationsByFilter(
       query,
       'primary_location.source.id:$journalId',
+      scope: scope,
       perPage: perPage,
     );
   }
@@ -143,37 +175,50 @@ class TrendApiService {
   Future<List<Publication>> fetchPublicationsByAuthorId(
     String query,
     String authorId, {
+    ResearchScope scope = ResearchScope.empty,
     int perPage = 20,
   }) {
     return _fetchPublicationsByFilter(
       query,
       'authorships.author.id:$authorId',
+      scope: scope,
       perPage: perPage,
     );
   }
 
   Future<List<Publication>> fetchPublicationSample(
     String query, {
+    ResearchScope scope = ResearchScope.empty,
     required int perPage,
   }) async {
     final cleanQuery = query.trim();
-    if (cleanQuery.isEmpty) {
+    if (cleanQuery.isEmpty && !scope.hasSearchableInput) {
       return const [];
     }
 
-    final data = await _client.get('/works', {
-      'search': cleanQuery,
-      'per_page': perPage.toString(),
-    });
+    final data = await _client.get(
+      '/works',
+      OpenAlexQueryBuilder.worksParams(
+        scope: scope,
+        query: cleanQuery,
+        perPage: perPage,
+      ),
+    );
 
     final List results = data['results'] ?? [];
     return results.map((json) => Publication.fromJson(json)).toList();
   }
 
   Future<Map<int, int>> _fetchPublicationsGroupByYearFromSample(
-    String query,
+    String query, {
+    ResearchScope scope = ResearchScope.empty,
+  }
   ) async {
-    final publications = await fetchPublicationSample(query, perPage: 50);
+    final publications = await fetchPublicationSample(
+      query,
+      scope: scope,
+      perPage: 50,
+    );
     final distribution = <int, int>{};
 
     for (final publication in publications) {
@@ -195,19 +240,24 @@ class TrendApiService {
 
   Future<List<TrendRankItem>> _tryFetchGroupedRanking(
     String query, {
+    ResearchScope scope = ResearchScope.empty,
     required String groupBy,
     required int limit,
   }) async {
     final cleanQuery = query.trim();
-    if (cleanQuery.isEmpty) {
+    if (cleanQuery.isEmpty && !scope.hasSearchableInput) {
       return const [];
     }
 
     try {
-      final data = await _client.get('/works', {
-        'search': cleanQuery,
-        'group_by': groupBy,
-      });
+      final data = await _client.get(
+        '/works',
+        OpenAlexQueryBuilder.worksParams(
+          scope: scope,
+          query: cleanQuery,
+          groupBy: groupBy,
+        ),
+      );
 
       final List groupByList = data['group_by'] ?? [];
       final entries = <TrendRankItem>[];
@@ -258,19 +308,24 @@ class TrendApiService {
   Future<List<Publication>> _fetchPublicationsByFilter(
     String query,
     String filter, {
+    ResearchScope scope = ResearchScope.empty,
     required int perPage,
   }) async {
     final cleanQuery = query.trim();
-    if (cleanQuery.isEmpty) {
+    if (cleanQuery.isEmpty && !scope.hasSearchableInput) {
       return const [];
     }
 
-    final data = await _client.get('/works', {
-      'search': cleanQuery,
-      'filter': filter,
-      'sort': 'cited_by_count:desc',
-      'per_page': perPage.toString(),
-    });
+    final data = await _client.get(
+      '/works',
+      OpenAlexQueryBuilder.worksParams(
+        scope: scope,
+        query: cleanQuery,
+        filter: filter,
+        sort: 'cited_by_count:desc',
+        perPage: perPage,
+      ),
+    );
 
     final List results = data['results'] ?? [];
     return results.map((json) => Publication.fromJson(json)).toList();

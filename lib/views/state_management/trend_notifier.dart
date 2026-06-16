@@ -20,6 +20,9 @@ class TrendNotifier extends ChangeNotifier {
   TrendNotifier({TrendApiService? apiService})
       : _apiService = apiService ?? TrendApiService() {
     SharedState.activeQueryNotifier.addListener(_onQueryChanged);
+    SharedState.activeResearchScopeNotifier.addListener(_onResearchScopeChanged);
+    SharedState.filteredPublicationsNotifier
+        .addListener(_onFilteredPublicationsChanged);
     fetchTrendData(SharedState.activeQueryNotifier.value);
   }
 
@@ -39,12 +42,41 @@ class TrendNotifier extends ChangeNotifier {
       _publications.isNotEmpty;
 
   void _onQueryChanged() {
+    final scope = SharedState.activeResearchScopeNotifier.value;
+    if (scope.hasStructuredFilters &&
+        scope.displayLabel == SharedState.activeQueryNotifier.value) {
+      return;
+    }
     fetchTrendData(SharedState.activeQueryNotifier.value);
   }
 
+  void _onResearchScopeChanged() {
+    fetchTrendData(SharedState.activeQueryNotifier.value);
+  }
+
+  void _onFilteredPublicationsChanged() {
+    final filtered = SharedState.filteredPublicationsNotifier.value;
+    if (filtered.isEmpty) {
+      return;
+    }
+
+    _publications = filtered;
+    _topPublications = List<Publication>.from(filtered)
+      ..sort((a, b) => b.citationCount.compareTo(a.citationCount));
+    _topPublications = _topPublications.take(5).toList();
+    _topJournals = _buildTopJournalsFromPublications(filtered);
+    _topAuthors = _buildTopAuthorsFromPublications(filtered);
+    _yearlyDistribution = _buildYearlyDistributionFromPublications(filtered);
+    _isLoading = false;
+    _errorMessage = null;
+    notifyListeners();
+  }
+
   Future<void> fetchTrendData(String query, {bool showLoading = true}) async {
-    final cleanQuery =
-        query.trim().isEmpty ? 'Artificial Intelligence' : query.trim();
+    final scope = SharedState.activeResearchScopeNotifier.value;
+    final cleanQuery = scope.hasStructuredFilters
+        ? scope.keyword
+        : (query.trim().isEmpty ? 'Artificial Intelligence' : query.trim());
 
     _isLoading = showLoading ? true : _isLoading;
     _errorMessage = null;
@@ -52,8 +84,12 @@ class TrendNotifier extends ChangeNotifier {
 
     try {
       final coreResults = await Future.wait([
-        _apiService.fetchPublicationsGroupByYear(cleanQuery),
-        _apiService.fetchTopInfluentialPublications(cleanQuery, perPage: 20),
+        _apiService.fetchPublicationsGroupByYear(cleanQuery, scope: scope),
+        _apiService.fetchTopInfluentialPublications(
+          cleanQuery,
+          scope: scope,
+          perPage: 20,
+        ),
       ]);
 
       _yearlyDistribution = coreResults[0] as Map<int, int>;
@@ -68,13 +104,21 @@ class TrendNotifier extends ChangeNotifier {
 
       final secondaryResults = await Future.wait([
         _apiService
-            .fetchPublicationSample(cleanQuery, perPage: 50)
+            .fetchPublicationSample(cleanQuery, scope: scope, perPage: 50)
             .catchError((_) => <Publication>[]),
         _apiService
-            .fetchTopResearchJournals(cleanQuery, perPage: 50)
+            .fetchTopResearchJournals(
+              cleanQuery,
+              scope: scope,
+              perPage: 50,
+            )
             .catchError((_) => <TrendRankItem>[]),
         _apiService
-            .fetchTopContributingAuthors(cleanQuery, perPage: 50)
+            .fetchTopContributingAuthors(
+              cleanQuery,
+              scope: scope,
+              perPage: 50,
+            )
             .catchError((_) => <TrendRankItem>[]),
       ]);
 
@@ -113,6 +157,8 @@ class TrendNotifier extends ChangeNotifier {
     final query = SharedState.activeQueryNotifier.value.trim().isEmpty
         ? 'Artificial Intelligence'
         : SharedState.activeQueryNotifier.value.trim();
+    final scope = SharedState.activeResearchScopeNotifier.value;
+    final cleanQuery = scope.hasStructuredFilters ? scope.keyword : query;
 
     final localMatches = _publications
         .where((publication) => publication.journalName == journal.name)
@@ -123,8 +169,9 @@ class TrendNotifier extends ChangeNotifier {
 
     try {
       final remoteMatches = await _apiService.fetchPublicationsByJournalId(
-        query,
+        cleanQuery,
         journal.id,
+        scope: scope,
       );
       if (remoteMatches.isNotEmpty) {
         return remoteMatches;
@@ -142,6 +189,8 @@ class TrendNotifier extends ChangeNotifier {
     final query = SharedState.activeQueryNotifier.value.trim().isEmpty
         ? 'Artificial Intelligence'
         : SharedState.activeQueryNotifier.value.trim();
+    final scope = SharedState.activeResearchScopeNotifier.value;
+    final cleanQuery = scope.hasStructuredFilters ? scope.keyword : query;
 
     final localMatches = _publications
         .where((publication) => publication.authors.contains(author.name))
@@ -152,8 +201,9 @@ class TrendNotifier extends ChangeNotifier {
 
     try {
       final remoteMatches = await _apiService.fetchPublicationsByAuthorId(
-        query,
+        cleanQuery,
         author.id,
+        scope: scope,
       );
       if (remoteMatches.isNotEmpty) {
         return remoteMatches;
@@ -197,6 +247,23 @@ class TrendNotifier extends ChangeNotifier {
     return _topEntries(authorMap);
   }
 
+  Map<int, int> _buildYearlyDistributionFromPublications(
+    List<Publication> publications,
+  ) {
+    final yearMap = <int, int>{};
+    for (final publication in publications) {
+      final year = publication.publicationYear;
+      if (year <= 0) {
+        continue;
+      }
+      yearMap[year] = (yearMap[year] ?? 0) + 1;
+    }
+
+    final entries = yearMap.entries.toList()
+      ..sort((a, b) => a.key.compareTo(b.key));
+    return Map.fromEntries(entries);
+  }
+
   List<TrendRankItem> _topEntries(Map<String, int> source) {
     final entries = source.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
@@ -233,6 +300,9 @@ class TrendNotifier extends ChangeNotifier {
   @override
   void dispose() {
     SharedState.activeQueryNotifier.removeListener(_onQueryChanged);
+    SharedState.activeResearchScopeNotifier.removeListener(_onResearchScopeChanged);
+    SharedState.filteredPublicationsNotifier
+        .removeListener(_onFilteredPublicationsChanged);
     super.dispose();
   }
 }

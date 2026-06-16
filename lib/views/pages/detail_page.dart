@@ -266,7 +266,7 @@ class DetailPage extends StatelessWidget {
                       ),
                     ),
                     onPressed: () {
-                      SharedState.activeQueryNotifier.value = concept;
+                      SharedState.setKeyword(concept);
                       SharedState.activeTabNotifier.value = 2;
                       Navigator.pop(context);
                     },
@@ -299,7 +299,7 @@ class DetailPage extends StatelessWidget {
                       ),
                     ),
                     onPressed: () {
-                      SharedState.activeQueryNotifier.value = topic;
+                      SharedState.setKeyword(topic);
                       SharedState.activeTabNotifier.value = 2;
                       Navigator.pop(context);
                     },

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/theme/app_colors.dart';
 import '../widgets/glass_card.dart';
+import '../widgets/research_taxonomy_selector.dart';
 import '../state_management/home_notifier.dart';
 import '../state_management/search_notifier.dart';
 import '../state_management/shared_state.dart';
@@ -42,7 +43,7 @@ class _HomePageState extends State<HomePage> {
     final query = _headerSearchController.text.trim();
     if (query.isNotEmpty) {
       // 1. Cập nhật từ khóa tìm kiếm toàn cục
-      SharedState.activeQueryNotifier.value = query;
+      SharedState.setKeyword(query);
       // 2. Chuyển hướng tab sang SearchPage (Index 1)
       SharedState.activeTabNotifier.value = 1;
       
@@ -52,6 +53,20 @@ class _HomePageState extends State<HomePage> {
         _headerSearchController.clear();
       });
     }
+  }
+
+  void _showTaxonomySelector() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => const ResearchTaxonomySelector(),
+    );
+  }
+
+  void _startResearch(String topic) {
+    SharedState.setKeyword(topic);
+    SharedState.activeTabNotifier.value = 2;
   }
 
   @override
@@ -76,7 +91,7 @@ class _HomePageState extends State<HomePage> {
                   contentPadding: EdgeInsets.zero,
                 ),
               )
-            : const Text('Journal Trend Analyzer'),
+            : const Text('Research Home'),
         leading: _isSearching
             ? IconButton(
                 icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
@@ -130,6 +145,17 @@ class _HomePageState extends State<HomePage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                _buildResearchHero(theme),
+                const SizedBox(height: 18),
+                _buildSectionHeader(theme, 'Bắt đầu phân tích', Icons.rocket_launch_rounded),
+                _buildResearchStartCards(theme),
+                const SizedBox(height: 18),
+                _buildSectionHeader(theme, 'Chủ đề nghiên cứu nhanh', Icons.bolt_rounded),
+                _buildQuickTopics(theme),
+                const SizedBox(height: 18),
+                const SizedBox(height: 18),
+                
+                const SizedBox(height: 18),
                 // Khối chào mừng (Welcome Header)
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
@@ -176,8 +202,7 @@ class _HomePageState extends State<HomePage> {
                 const SizedBox(height: 20),
 
                 // Phân mục 4: Các Nhà Xuất Bản & Viện Nghiên Cứu Lớn (Publishers & Institutions)
-                _buildSectionHeader(theme, 'Các Trung Tâm Tri Thức Lớn', Icons.domain_rounded),
-                _buildHubsTabs(theme, state),
+                
               ],
             ),
           );
@@ -187,6 +212,238 @@ class _HomePageState extends State<HomePage> {
   }
 
   /// Dựng tiêu đề chung cho các phân mục
+  Widget _buildResearchHero(ThemeData theme) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      child: GlassCard(
+        borderRadius: 14,
+        color: Colors.white.withOpacity(0.08),
+        borderColor: Colors.white.withOpacity(0.14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF80CBC4).withOpacity(0.18),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.insights_rounded,
+                    color: Color(0xFF80CBC4),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Research Trend Analysis',
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Tìm publication, chọn taxonomy OpenAlex và phân tích trend, citation, top journals, top authors cùng key insights trên một màn hình.',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: Colors.white70,
+                height: 1.35,
+              ),
+            ),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () => SharedState.activeTabNotifier.value = 2,
+                    icon: const Icon(Icons.analytics_rounded),
+                    label: const Text('Mở Research'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF80CBC4),
+                      foregroundColor: AppColors.primaryText,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                IconButton.filledTonal(
+                  onPressed: _showTaxonomySelector,
+                  icon: const Icon(Icons.account_tree_rounded),
+                  tooltip: 'Chọn taxonomy OpenAlex',
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildResearchStartCards(ThemeData theme) {
+    final items = [
+      (
+        icon: Icons.search_rounded,
+        title: 'Tìm publication',
+        subtitle: 'Search works từ OpenAlex theo topic/keyword.',
+        action: () => SharedState.activeTabNotifier.value = 1,
+      ),
+      (
+        icon: Icons.account_tree_rounded,
+        title: 'Chọn taxonomy',
+        subtitle: 'Domain > Field > Subfield > Topic.',
+        action: _showTaxonomySelector,
+      ),
+      (
+        icon: Icons.bar_chart_rounded,
+        title: 'Phân tích trend',
+        subtitle: 'Trend theo năm, citations, journal, author.',
+        action: () => SharedState.activeTabNotifier.value = 2,
+      ),
+    ];
+
+    return SizedBox(
+      height: 150,
+      child: ListView.separated(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        scrollDirection: Axis.horizontal,
+        itemCount: items.length,
+        separatorBuilder: (_, _) => const SizedBox(width: 10),
+        itemBuilder: (context, index) {
+          final item = items[index];
+          return SizedBox(
+            width: 210,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: item.action,
+              child: GlassCard(
+                borderRadius: 12,
+                padding: const EdgeInsets.all(12),
+                color: Colors.white.withOpacity(0.06),
+                borderColor: Colors.white.withOpacity(0.12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(item.icon, color: const Color(0xFF80CBC4), size: 24),
+                    const SizedBox(height: 10),
+                    Text(
+                      item.title,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      item.subtitle,
+                      style: const TextStyle(color: Colors.white60, fontSize: 12),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildQuickTopics(ThemeData theme) {
+    const topics = [
+      'Artificial Intelligence',
+      'Machine Learning',
+      'Climate Change',
+      'Cancer Research',
+      'Renewable Energy',
+      'Public Health',
+    ];
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: topics.map((topic) {
+          return ActionChip(
+            avatar: const Icon(Icons.auto_graph_rounded, size: 16),
+            label: Text(topic),
+            labelStyle: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+              fontSize: 12,
+            ),
+            backgroundColor: Colors.white.withOpacity(0.08),
+            side: BorderSide(color: Colors.white.withOpacity(0.14)),
+            onPressed: () => _startResearch(topic),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  // ignore: unused_element
+  Widget _buildTaxonomyOverview(ThemeData theme) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: GlassCard(
+        borderRadius: 12,
+        padding: const EdgeInsets.all(14),
+        color: Colors.white.withOpacity(0.06),
+        borderColor: Colors.white.withOpacity(0.12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              '4 Domains -> 26 Fields -> 254 Subfields -> ~4.500 Topics',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Dùng cây phân loại OpenAlex để thu hẹp research scope trước khi phân tích publication trend.',
+              style: TextStyle(color: Colors.white70, height: 1.35),
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: _showTaxonomySelector,
+              icon: const Icon(Icons.account_tree_rounded),
+              label: const Text('Chọn taxonomy OpenAlex'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFF80CBC4),
+                side: BorderSide(color: Colors.white.withOpacity(0.22)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ignore: unused_element
+  Widget _buildAuthorsPreview(ThemeData theme, HomeState state) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      child: GlassCard(
+        borderRadius: 12,
+        padding: const EdgeInsets.all(10),
+        color: Colors.white.withOpacity(0.04),
+        borderColor: Colors.white.withOpacity(0.12),
+        child: SizedBox(
+          height: 250,
+          child: _buildAuthorsTab(theme, state),
+        ),
+      ),
+    );
+  }
+
   Widget _buildSectionHeader(ThemeData theme, String title, IconData icon) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
@@ -266,8 +523,8 @@ class _HomePageState extends State<HomePage> {
                 borderRadius: BorderRadius.circular(16),
                 onTap: () {
                   // Đặt từ khóa lọc và chuyển hướng sang tab Dashboard (Index 3)
-                  SharedState.activeQueryNotifier.value = field.name;
-                  SharedState.activeTabNotifier.value = 3;
+                  SharedState.setKeyword(field.name);
+                  SharedState.activeTabNotifier.value = 2;
                 },
                 child: GlassCard(
                   padding: const EdgeInsets.all(12),
@@ -337,7 +594,7 @@ class _HomePageState extends State<HomePage> {
                 borderRadius: BorderRadius.circular(16),
                 onTap: () {
                   // Đặt từ khóa là SDG + số mục tiêu, chuyển hướng sang Search (Index 1)
-                  SharedState.activeQueryNotifier.value = 'Sustainable Development Goal ${sdg.number}';
+                  SharedState.setKeyword('Sustainable Development Goal ${sdg.number}');
                   SharedState.activeTabNotifier.value = 1;
                 },
                 child: GlassCard(
@@ -490,6 +747,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   /// Dựng Tabs kiến trúc hiển thị các Tác giả & Viện trường tiêu biểu
+  // ignore: unused_element
   Widget _buildHubsTabs(ThemeData theme, HomeState state) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16.0),

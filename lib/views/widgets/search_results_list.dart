@@ -29,7 +29,20 @@ class SearchResultsList extends StatelessWidget {
               SizedBox(
                 height: 420,
                 child: Center(
-                  child: CircularProgressIndicator(color: Colors.white),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      CircularProgressIndicator(color: Colors.white),
+                      SizedBox(height: 14),
+                      Text(
+                        'Đang tải publications từ OpenAlex...',
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -58,7 +71,7 @@ class SearchResultsList extends StatelessWidget {
                           ),
                           const SizedBox(height: 12),
                           Text(
-                            'Đã xảy ra lỗi',
+                            'Không thể tải publications',
                             style: theme.textTheme.titleMedium?.copyWith(
                               color: Colors.white,
                               fontWeight: FontWeight.bold,
@@ -100,10 +113,16 @@ class SearchResultsList extends StatelessWidget {
                       ),
                       const SizedBox(height: 16),
                       Text(
-                        'Không tìm thấy kết quả nào.',
+                        'No publications available for analysis.',
                         style: theme.textTheme.titleMedium?.copyWith(
                           color: Colors.white,
                         ),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Try changing your topic or filters.',
+                        style: TextStyle(color: Colors.white60),
+                        textAlign: TextAlign.center,
                       ),
                     ],
                   ),
@@ -126,6 +145,11 @@ class SearchResultsList extends StatelessWidget {
               year: pub.publicationYear.toString(),
               citationCount: pub.citationCount,
               journalName: pub.journalName,
+              isOpenAccess: pub.isOpenAccess,
+              publicationType: pub.publicationType,
+              primaryAuthor: pub.authors.isEmpty ? null : pub.authors.first,
+              topics: pub.topics,
+              concepts: pub.concepts,
               onTap: () {
                 Navigator.push(
                   context,
