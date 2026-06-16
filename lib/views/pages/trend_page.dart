@@ -667,22 +667,21 @@ class _TrendPageState extends State<TrendPage> {
 
     return Column(
       children: list.map((entry) {
-        // Lọc danh sách bài báo thuộc tạp chí này
-        final journalPubs = widget.notifier.publications
-            .where((pub) => pub.journalName == entry.key)
-            .toList();
-
         return Material(
           color: Colors.transparent,
           child: InkWell(
             borderRadius: BorderRadius.circular(12),
-            onTap: () {
+            onTap: () async {
+              final journalPubs =
+                  await widget.notifier.fetchPublicationsForJournal(entry);
+              if (!context.mounted) return;
+
               showModalBottomSheet(
                 context: context,
                 isScrollControlled: true,
                 backgroundColor: Colors.transparent,
                 builder: (context) => WorksListBottomSheet(
-                  title: 'Bài viết từ tạp chí:\n${entry.key}',
+                  title: 'Bài viết từ tạp chí:\n${entry.name}',
                   publications: journalPubs,
                 ),
               );
@@ -695,7 +694,7 @@ class _TrendPageState extends State<TrendPage> {
                 children: [
                   Expanded(
                     child: Text(
-                      entry.key,
+                      entry.name,
                       style: theme.textTheme.bodySmall?.copyWith(
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
@@ -712,7 +711,7 @@ class _TrendPageState extends State<TrendPage> {
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Text(
-                      '${entry.value} bài',
+                      '${entry.count} bài',
                       style: theme.textTheme.labelSmall?.copyWith(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
@@ -739,22 +738,21 @@ class _TrendPageState extends State<TrendPage> {
 
     return Column(
       children: list.map((entry) {
-        // Lọc danh sách bài báo mà tác giả này tham gia viết
-        final authorPubs = widget.notifier.publications
-            .where((pub) => pub.authors.contains(entry.key))
-            .toList();
-
         return Material(
           color: Colors.transparent,
           child: InkWell(
             borderRadius: BorderRadius.circular(12),
-            onTap: () {
+            onTap: () async {
+              final authorPubs =
+                  await widget.notifier.fetchPublicationsForAuthor(entry);
+              if (!context.mounted) return;
+
               showModalBottomSheet(
                 context: context,
                 isScrollControlled: true,
                 backgroundColor: Colors.transparent,
                 builder: (context) => WorksListBottomSheet(
-                  title: 'Bài viết của tác giả:\n${entry.key}',
+                  title: 'Bài viết của tác giả:\n${entry.name}',
                   publications: authorPubs,
                 ),
               );
@@ -767,7 +765,7 @@ class _TrendPageState extends State<TrendPage> {
                 children: [
                   Expanded(
                     child: Text(
-                      entry.key,
+                      entry.name,
                       style: theme.textTheme.bodySmall?.copyWith(
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
@@ -784,7 +782,7 @@ class _TrendPageState extends State<TrendPage> {
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Text(
-                      '${entry.value} bài',
+                      '${entry.count} bài',
                       style: theme.textTheme.labelSmall?.copyWith(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,

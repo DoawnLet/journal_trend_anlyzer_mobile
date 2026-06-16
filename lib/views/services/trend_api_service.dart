@@ -1,4 +1,5 @@
 import '../models/publication_model.dart';
+import '../models/trend_rank_item_model.dart';
 import 'openalex_client.dart';
 
 class TrendApiService {
@@ -69,7 +70,7 @@ class TrendApiService {
     }
   }
 
-  Future<List<MapEntry<String, int>>> fetchTopResearchJournals(
+  Future<List<TrendRankItem>> fetchTopResearchJournals(
     String query, {
     int perPage = 200,
     int limit = 5,
@@ -94,10 +95,10 @@ class TrendApiService {
       journalMap[journalName] = (journalMap[journalName] ?? 0) + 1;
     }
 
-    return _sortedTopEntries(journalMap, limit);
+    return _sortedTopItems(journalMap, limit);
   }
 
-  Future<List<MapEntry<String, int>>> fetchTopContributingAuthors(
+  Future<List<TrendRankItem>> fetchTopContributingAuthors(
     String query, {
     int perPage = 200,
     int limit = 5,
@@ -124,7 +125,31 @@ class TrendApiService {
       }
     }
 
-    return _sortedTopEntries(authorMap, limit);
+    return _sortedTopItems(authorMap, limit);
+  }
+
+  Future<List<Publication>> fetchPublicationsByJournalId(
+    String query,
+    String journalId, {
+    int perPage = 20,
+  }) {
+    return _fetchPublicationsByFilter(
+      query,
+      'primary_location.source.id:$journalId',
+      perPage: perPage,
+    );
+  }
+
+  Future<List<Publication>> fetchPublicationsByAuthorId(
+    String query,
+    String authorId, {
+    int perPage = 20,
+  }) {
+    return _fetchPublicationsByFilter(
+      query,
+      'authorships.author.id:$authorId',
+      perPage: perPage,
+    );
   }
 
   Future<List<Publication>> fetchPublicationSample(
@@ -168,7 +193,7 @@ class TrendApiService {
     );
   }
 
-  Future<List<MapEntry<String, int>>> _tryFetchGroupedRanking(
+  Future<List<TrendRankItem>> _tryFetchGroupedRanking(
     String query, {
     required String groupBy,
     required int limit,
@@ -185,38 +210,69 @@ class TrendApiService {
       });
 
       final List groupByList = data['group_by'] ?? [];
-      final entries = <MapEntry<String, int>>[];
+      final entries = <TrendRankItem>[];
 
       for (final item in groupByList) {
         if (item is! Map) {
           continue;
         }
 
+        final id = item['key']?.toString();
         final name = (item['key_display_name'] ?? item['key'])?.toString();
         final count = int.tryParse(item['count']?.toString() ?? '');
-        if (name == null ||
+        if (id == null ||
+            id.isEmpty ||
+            name == null ||
             name.isEmpty ||
             name == 'null' ||
             count == null ||
             count <= 0) {
           continue;
         }
-        entries.add(MapEntry(name, count));
+        entries.add(TrendRankItem(id: id, name: name, count: count));
       }
 
-      entries.sort((a, b) => b.value.compareTo(a.value));
+      entries.sort((a, b) => b.count.compareTo(a.count));
       return entries.take(limit).toList();
     } catch (_) {
       return const [];
     }
   }
 
-  List<MapEntry<String, int>> _sortedTopEntries(
+  List<TrendRankItem> _sortedTopItems(
     Map<String, int> counts,
     int limit,
   ) {
     final entries = counts.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
-    return entries.take(limit).toList();
+    return entries
+        .take(limit)
+        .map((entry) => TrendRankItem(
+              id: entry.key,
+              name: entry.key,
+              count: entry.value,
+            ))
+        .toList();
+  }
+
+  Future<List<Publication>> _fetchPublicationsByFilter(
+    String query,
+    String filter, {
+    required int perPage,
+  }) async {
+    final cleanQuery = query.trim();
+    if (cleanQuery.isEmpty) {
+      return const [];
+    }
+
+    final data = await _client.get('/works', {
+      'search': cleanQuery,
+      'filter': filter,
+      'sort': 'cited_by_count:desc',
+      'per_page': perPage.toString(),
+    });
+
+    final List results = data['results'] ?? [];
+    return results.map((json) => Publication.fromJson(json)).toList();
   }
 }

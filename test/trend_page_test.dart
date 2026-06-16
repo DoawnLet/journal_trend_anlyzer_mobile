@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:journal_trend_analysis_mb/views/pages/trend_page.dart';
 import 'package:journal_trend_analysis_mb/views/state_management/trend_notifier.dart';
 import 'package:journal_trend_analysis_mb/views/models/publication_model.dart';
+import 'package:journal_trend_analysis_mb/views/models/trend_rank_item_model.dart';
 import 'package:journal_trend_analysis_mb/views/services/trend_api_service.dart';
 import 'package:journal_trend_analysis_mb/views/state_management/shared_state.dart';
 
@@ -44,27 +45,49 @@ class FakeTrendApiService implements TrendApiService {
   }
 
   @override
-  Future<List<MapEntry<String, int>>> fetchTopResearchJournals(
+  Future<List<TrendRankItem>> fetchTopResearchJournals(
     String query, {
     int perPage = 200,
     int limit = 5,
   }) async {
     return const [
-      MapEntry('Test Journal A', 1),
-      MapEntry('Test Journal B', 1),
+      TrendRankItem(id: 'Test Journal A', name: 'Test Journal A', count: 1),
+      TrendRankItem(id: 'Test Journal B', name: 'Test Journal B', count: 1),
     ];
   }
 
   @override
-  Future<List<MapEntry<String, int>>> fetchTopContributingAuthors(
+  Future<List<TrendRankItem>> fetchTopContributingAuthors(
     String query, {
     int perPage = 200,
     int limit = 5,
   }) async {
     return const [
-      MapEntry('Author X', 1),
-      MapEntry('Author Z', 1),
+      TrendRankItem(id: 'Author X', name: 'Author X', count: 1),
+      TrendRankItem(id: 'Author Z', name: 'Author Z', count: 1),
     ];
+  }
+
+  @override
+  Future<List<Publication>> fetchPublicationsByJournalId(
+    String query,
+    String journalId, {
+    int perPage = 20,
+  }) async {
+    return publications
+        .where((publication) => publication.journalName == journalId)
+        .toList();
+  }
+
+  @override
+  Future<List<Publication>> fetchPublicationsByAuthorId(
+    String query,
+    String authorId, {
+    int perPage = 20,
+  }) async {
+    return publications
+        .where((publication) => publication.authors.contains(authorId))
+        .toList();
   }
 
   @override

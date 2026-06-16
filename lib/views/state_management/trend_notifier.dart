@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/utils/error_translator.dart';
 import '../models/publication_model.dart';
+import '../models/trend_rank_item_model.dart';
 import '../services/trend_api_service.dart';
 import 'shared_state.dart';
 
@@ -13,8 +14,8 @@ class TrendNotifier extends ChangeNotifier {
 
   Map<int, int> _yearlyDistribution = {};
   List<Publication> _topPublications = [];
-  List<MapEntry<String, int>> _topJournals = [];
-  List<MapEntry<String, int>> _topAuthors = [];
+  List<TrendRankItem> _topJournals = [];
+  List<TrendRankItem> _topAuthors = [];
 
   TrendNotifier({TrendApiService? apiService})
       : _apiService = apiService ?? TrendApiService() {
@@ -28,8 +29,8 @@ class TrendNotifier extends ChangeNotifier {
 
   Map<int, int> get yearlyDistribution => _yearlyDistribution;
   List<Publication> get topPublications => _topPublications;
-  List<MapEntry<String, int>> get topJournals => _topJournals;
-  List<MapEntry<String, int>> get topAuthors => _topAuthors;
+  List<TrendRankItem> get topJournals => _topJournals;
+  List<TrendRankItem> get topAuthors => _topAuthors;
   bool get hasData =>
       _yearlyDistribution.isNotEmpty ||
       _topPublications.isNotEmpty ||
@@ -71,18 +72,21 @@ class TrendNotifier extends ChangeNotifier {
             .catchError((_) => <Publication>[]),
         _apiService
             .fetchTopResearchJournals(cleanQuery, perPage: 50)
-            .catchError((_) => <MapEntry<String, int>>[]),
+            .catchError((_) => <TrendRankItem>[]),
         _apiService
             .fetchTopContributingAuthors(cleanQuery, perPage: 50)
-            .catchError((_) => <MapEntry<String, int>>[]),
+            .catchError((_) => <TrendRankItem>[]),
       ]);
 
       final samplePublications = secondaryResults[0] as List<Publication>;
       if (samplePublications.isNotEmpty) {
         _publications = samplePublications;
+        _topJournals = _buildTopJournalsFromPublications(samplePublications);
+        _topAuthors = _buildTopAuthorsFromPublications(samplePublications);
+      } else {
+        _topJournals = _rankItemsFromResult(secondaryResults[1]);
+        _topAuthors = _rankItemsFromResult(secondaryResults[2]);
       }
-      _topJournals = secondaryResults[1] as List<MapEntry<String, int>>;
-      _topAuthors = secondaryResults[2] as List<MapEntry<String, int>>;
       notifyListeners();
     } catch (e) {
       _errorMessage = ErrorTranslator.translate(e);
@@ -101,6 +105,129 @@ class TrendNotifier extends ChangeNotifier {
     _topPublications = const [];
     _topJournals = const [];
     _topAuthors = const [];
+  }
+
+  Future<List<Publication>> fetchPublicationsForJournal(
+    TrendRankItem journal,
+  ) async {
+    final query = SharedState.activeQueryNotifier.value.trim().isEmpty
+        ? 'Artificial Intelligence'
+        : SharedState.activeQueryNotifier.value.trim();
+
+    final localMatches = _publications
+        .where((publication) => publication.journalName == journal.name)
+        .toList();
+    if (localMatches.isNotEmpty && journal.id == journal.name) {
+      return localMatches;
+    }
+
+    try {
+      final remoteMatches = await _apiService.fetchPublicationsByJournalId(
+        query,
+        journal.id,
+      );
+      if (remoteMatches.isNotEmpty) {
+        return remoteMatches;
+      }
+    } catch (_) {
+      // Fall back to local matches below.
+    }
+
+    return localMatches;
+  }
+
+  Future<List<Publication>> fetchPublicationsForAuthor(
+    TrendRankItem author,
+  ) async {
+    final query = SharedState.activeQueryNotifier.value.trim().isEmpty
+        ? 'Artificial Intelligence'
+        : SharedState.activeQueryNotifier.value.trim();
+
+    final localMatches = _publications
+        .where((publication) => publication.authors.contains(author.name))
+        .toList();
+    if (localMatches.isNotEmpty && author.id == author.name) {
+      return localMatches;
+    }
+
+    try {
+      final remoteMatches = await _apiService.fetchPublicationsByAuthorId(
+        query,
+        author.id,
+      );
+      if (remoteMatches.isNotEmpty) {
+        return remoteMatches;
+      }
+    } catch (_) {
+      // Fall back to local matches below.
+    }
+
+    return localMatches;
+  }
+
+  List<TrendRankItem> _buildTopJournalsFromPublications(
+    List<Publication> publications,
+  ) {
+    final journalMap = <String, int>{};
+    for (final publication in publications) {
+      final journalName = publication.journalName.trim();
+      if (journalName.isEmpty || journalName == 'Unknown Journal') {
+        continue;
+      }
+      journalMap[journalName] = (journalMap[journalName] ?? 0) + 1;
+    }
+
+    return _topEntries(journalMap);
+  }
+
+  List<TrendRankItem> _buildTopAuthorsFromPublications(
+    List<Publication> publications,
+  ) {
+    final authorMap = <String, int>{};
+    for (final publication in publications) {
+      for (final author in publication.authors) {
+        final authorName = author.trim();
+        if (authorName.isEmpty) {
+          continue;
+        }
+        authorMap[authorName] = (authorMap[authorName] ?? 0) + 1;
+      }
+    }
+
+    return _topEntries(authorMap);
+  }
+
+  List<TrendRankItem> _topEntries(Map<String, int> source) {
+    final entries = source.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    return entries
+        .take(5)
+        .map((entry) => TrendRankItem(
+              id: entry.key,
+              name: entry.key,
+              count: entry.value,
+            ))
+        .toList();
+  }
+
+  List<TrendRankItem> _rankItemsFromResult(Object? result) {
+    if (result is! List) {
+      return const [];
+    }
+
+    return result
+        .where((item) => item is TrendRankItem || item is MapEntry)
+        .map((item) {
+          if (item is TrendRankItem) {
+            return item;
+          }
+
+          final legacyEntry = item as MapEntry;
+          final name = legacyEntry.key.toString();
+          final count = int.tryParse(legacyEntry.value.toString()) ?? 0;
+          return TrendRankItem(id: name, name: name, count: count);
+        })
+        .toList();
   }
 
   @override
