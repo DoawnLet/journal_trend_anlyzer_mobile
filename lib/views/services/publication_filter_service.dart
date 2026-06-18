@@ -14,6 +14,12 @@ class PublicationFilterService {
       final matchJournal = filter.selectedJournals.isEmpty ||
           filter.selectedJournals.contains(journal);
 
+      final matchSelectedTopic = filter.selectedTopics.isEmpty ||
+          filter.selectedTopics.any(
+            (topic) =>
+                paper.primaryTopic == topic || paper.topics.contains(topic),
+          );
+
       final taxonomy = filter.taxonomy;
       final matchDomain =
           taxonomy.domain == null || paper.domain == taxonomy.domain!.name;
@@ -27,6 +33,7 @@ class PublicationFilterService {
 
       return matchAuthor &&
           matchJournal &&
+          matchSelectedTopic &&
           matchDomain &&
           matchField &&
           matchSubfield &&

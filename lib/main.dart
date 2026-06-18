@@ -28,7 +28,10 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
-      listenable: SharedState.themeModeNotifier,
+      listenable: Listenable.merge([
+        SharedState.themeModeNotifier,
+        SharedState.languageNotifier,
+      ]),
       builder: (context, _) {
         return MaterialApp(
           title: 'Journal Trend Analyzer',

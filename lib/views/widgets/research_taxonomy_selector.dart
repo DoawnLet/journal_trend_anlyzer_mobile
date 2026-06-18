@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/utils/formatters.dart';
+import '../../core/utils/translation.dart';
 import '../models/research_taxonomy_model.dart';
 import '../services/taxonomy_api_service.dart';
 import '../state_management/shared_state.dart';
@@ -74,7 +75,7 @@ class _ResearchTaxonomySelectorState extends State<ResearchTaxonomySelector> {
         return;
       }
       setState(() {
-        _errorMessage = 'Không tải được taxonomy từ OpenAlex.';
+        _errorMessage = 'error_loading_taxonomy'.tr();
       });
     } finally {
       if (mounted) {
@@ -186,7 +187,7 @@ class _ResearchTaxonomySelectorState extends State<ResearchTaxonomySelector> {
               children: [
                 Expanded(
                   child: Text(
-                    'Cây phân loại nghiên cứu',
+                    'research_taxonomy_tree'.tr(),
                     style: theme.textTheme.titleMedium?.copyWith(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
@@ -206,7 +207,7 @@ class _ResearchTaxonomySelectorState extends State<ResearchTaxonomySelector> {
               textInputAction: TextInputAction.search,
               onSubmitted: _searchTopics,
               decoration: InputDecoration(
-                hintText: 'Tìm topic, ví dụ: Artificial Intelligence',
+                hintText: 'search_taxonomy_hint'.tr(),
                 hintStyle: const TextStyle(color: Colors.white38),
                 prefixIcon:
                     const Icon(Icons.search_rounded, color: Colors.white60),
@@ -240,7 +241,7 @@ class _ResearchTaxonomySelectorState extends State<ResearchTaxonomySelector> {
                 TextButton.icon(
                   onPressed: _isLoading ? null : _loadFullCatalog,
                   icon: const Icon(Icons.account_tree_rounded, size: 18),
-                  label: const Text('Tải catalog'),
+                  label: Text('load_catalog'.tr()),
                   style: TextButton.styleFrom(
                     foregroundColor: const Color(0xFF80CBC4),
                   ),
@@ -327,7 +328,7 @@ class _ResearchTaxonomySelectorState extends State<ResearchTaxonomySelector> {
                 Expanded(
                   child: OutlinedButton.icon(
                     icon: const Icon(Icons.clear_rounded),
-                    label: const Text('Xóa chọn'),
+                    label: Text('clear_selection'.tr()),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: Colors.white70,
                       side: BorderSide(color: Colors.white.withOpacity(0.2)),
@@ -340,7 +341,7 @@ class _ResearchTaxonomySelectorState extends State<ResearchTaxonomySelector> {
                 Expanded(
                   child: ElevatedButton.icon(
                     icon: const Icon(Icons.check_rounded),
-                    label: const Text('Áp dụng'),
+                    label: Text('apply'.tr()),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF80CBC4),
                       foregroundColor: const Color(0xFF123838),
@@ -365,6 +366,14 @@ class _ResearchTaxonomySelectorState extends State<ResearchTaxonomySelector> {
       topic: _selectedTopic,
     );
 
+    final parts = [
+      _selectedDomain?.name.tr(),
+      _selectedField?.name.tr(),
+      _selectedSubfield?.name.tr(),
+      _selectedTopic?.name.tr(),
+    ].whereType<String>().where((item) => item.isNotEmpty).toList();
+    final breadcrumb = parts.join(' > ');
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(12),
@@ -375,8 +384,8 @@ class _ResearchTaxonomySelectorState extends State<ResearchTaxonomySelector> {
       ),
       child: Text(
         selection.hasSelection
-            ? selection.breadcrumb
-            : 'Chưa chọn taxonomy',
+            ? breadcrumb
+            : 'no_taxonomy_selected'.tr(),
         style: theme.textTheme.bodySmall?.copyWith(
           color: selection.hasSelection ? Colors.white : Colors.white54,
           fontWeight: selection.hasSelection ? FontWeight.w600 : null,
@@ -417,8 +426,8 @@ class _ResearchTaxonomySelectorState extends State<ResearchTaxonomySelector> {
                 selected: isSelected,
                 label: Text(
                   node.worksCount > 0
-                      ? '${node.name} (${Formatters.formatCitationCount(node.worksCount)})'
-                      : node.name,
+                      ? '${node.name.tr()} (${Formatters.formatCitationCount(node.worksCount)})'
+                      : node.name.tr(),
                   overflow: TextOverflow.ellipsis,
                 ),
                 labelStyle: TextStyle(

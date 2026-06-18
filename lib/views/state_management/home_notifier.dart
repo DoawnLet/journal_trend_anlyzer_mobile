@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import '../models/research_taxonomy_model.dart';
 import '../services/openalex_api_service.dart';
+import '../services/taxonomy_api_service.dart';
 
 class FieldItem {
   final String name;
@@ -32,8 +34,28 @@ class SDGItem {
   final String title;
   final Color color;
   final IconData icon;
+  final int worksCount;
+  final String searchQuery;
+  final ResearchTaxonomySelection? taxonomySelection;
 
   const SDGItem({
+    required this.number,
+    required this.title,
+    required this.color,
+    required this.icon,
+    this.worksCount = 0,
+    this.searchQuery = '',
+    this.taxonomySelection,
+  });
+}
+
+class SdgSeed {
+  final int number;
+  final String title;
+  final Color color;
+  final IconData icon;
+
+  const SdgSeed({
     required this.number,
     required this.title,
     required this.color,
@@ -80,6 +102,7 @@ class HomeState {
   final List<AuthorItem> authors;
   final List<InstitutionItem> institutions;
   final bool isLoading;
+  final bool isLoadingSdgs;
 
   HomeState({
     this.selectedDomain = 'Khoa học Vật lý',
@@ -90,6 +113,7 @@ class HomeState {
     List<AuthorItem>? authors,
     List<InstitutionItem>? institutions,
     this.isLoading = false,
+    this.isLoadingSdgs = false,
   }) : activeFields = activeFields ?? const <FieldItem>[],
        geographyLeaderboard = geographyLeaderboard ?? const <GeographyItem>[],
        sdgs = sdgs ?? const <SDGItem>[],
@@ -105,6 +129,7 @@ class HomeState {
     List<AuthorItem>? authors,
     List<InstitutionItem>? institutions,
     bool? isLoading,
+    bool? isLoadingSdgs,
   }) {
     return HomeState(
       selectedDomain: selectedDomain ?? this.selectedDomain,
@@ -115,6 +140,7 @@ class HomeState {
       authors: authors ?? this.authors,
       institutions: institutions ?? this.institutions,
       isLoading: isLoading ?? this.isLoading,
+      isLoadingSdgs: isLoadingSdgs ?? this.isLoadingSdgs,
     );
   }
 }
@@ -125,38 +151,144 @@ class HomeNotifier {
   // Lưu trữ tĩnh dữ liệu các Fields thuộc từng nhóm Domain chính
   final Map<String, List<FieldItem>> _fieldsMap = {
     'Khoa học Vật lý': const [
-      FieldItem(name: 'Computer Science', icon: Icons.computer_rounded, description: 'Khoa học máy tính, AI, Học máy'),
-      FieldItem(name: 'Mathematics', icon: Icons.calculate_rounded, description: 'Toán học lý thuyết & ứng dụng'),
-      FieldItem(name: 'Physics', icon: Icons.science_rounded, description: 'Vật lý lượng tử, Thiên văn, Cơ học'),
-      FieldItem(name: 'Chemistry', icon: Icons.biotech_rounded, description: 'Hóa học hữu cơ, Hóa lý, Hóa sinh'),
-      FieldItem(name: 'Engineering', icon: Icons.engineering_rounded, description: 'Kỹ thuật điện, Cơ khí, Vật liệu'),
+      FieldItem(name: 'Computer Science', icon: Icons.computer_rounded, description: 'computer_science_desc'),
+      FieldItem(name: 'Mathematics', icon: Icons.calculate_rounded, description: 'mathematics_desc'),
+      FieldItem(name: 'Physics', icon: Icons.science_rounded, description: 'physics_desc'),
+      FieldItem(name: 'Chemistry', icon: Icons.biotech_rounded, description: 'chemistry_desc'),
+      FieldItem(name: 'Engineering', icon: Icons.engineering_rounded, description: 'engineering_desc'),
     ],
     'Khoa học Y học': const [
-      FieldItem(name: 'Medicine', icon: Icons.medical_services_rounded, description: 'Y khoa lâm sàng, Nội, Ngoại khoa'),
-      FieldItem(name: 'Nursing', icon: Icons.healing_rounded, description: 'Điều dưỡng & chăm sóc sức khỏe'),
-      FieldItem(name: 'Dentistry', icon: Icons.health_and_safety_rounded, description: 'Nha khoa & răng hàm mặt'),
-      FieldItem(name: 'Pharmacology', icon: Icons.vaccines_rounded, description: 'Dược lý học & phát triển thuốc'),
+      FieldItem(name: 'Medicine', icon: Icons.medical_services_rounded, description: 'medicine_desc'),
+      FieldItem(name: 'Nursing', icon: Icons.healing_rounded, description: 'nursing_desc'),
+      FieldItem(name: 'Dentistry', icon: Icons.health_and_safety_rounded, description: 'dentistry_desc'),
+      FieldItem(name: 'Pharmacology', icon: Icons.vaccines_rounded, description: 'pharmacology_desc'),
     ],
     'Khoa học Xã hội': const [
-      FieldItem(name: 'Psychology', icon: Icons.psychology_rounded, description: 'Tâm lý học hành vi & nhận thức'),
-      FieldItem(name: 'Economics', icon: Icons.monetization_on_rounded, description: 'Kinh tế học, Tài chính vĩ mô'),
-      FieldItem(name: 'Political Science', icon: Icons.gavel_rounded, description: 'Khoa học chính trị & chính sách công'),
-      FieldItem(name: 'Education', icon: Icons.school_rounded, description: 'Giáo dục học & phương pháp giảng dạy'),
-      FieldItem(name: 'Sociology', icon: Icons.groups_rounded, description: 'Xã hội học & văn hóa nhân chủng'),
+      FieldItem(name: 'Psychology', icon: Icons.psychology_rounded, description: 'psychology_desc'),
+      FieldItem(name: 'Economics', icon: Icons.monetization_on_rounded, description: 'economics_desc'),
+      FieldItem(name: 'Political Science', icon: Icons.gavel_rounded, description: 'political_science_desc'),
+      FieldItem(name: 'Education', icon: Icons.school_rounded, description: 'education_desc'),
+      FieldItem(name: 'Sociology', icon: Icons.groups_rounded, description: 'sociology_desc'),
     ],
     'Khoa học Sự sống': const [
-      FieldItem(name: 'Biology', icon: Icons.eco_rounded, description: 'Sinh học đại cương & sinh thái'),
-      FieldItem(name: 'Genetics', icon: Icons.grain_rounded, description: 'Di truyền học & sinh học phân tử'),
-      FieldItem(name: 'Ecology', icon: Icons.forest_rounded, description: 'Sinh thái môi trường & bảo tồn'),
-      FieldItem(name: 'Neuroscience', icon: Icons.insights_rounded, description: 'Thần kinh học & hệ thống hành vi'),
+      FieldItem(name: 'Biology', icon: Icons.eco_rounded, description: 'biology_desc'),
+      FieldItem(name: 'Genetics', icon: Icons.grain_rounded, description: 'genetics_desc'),
+      FieldItem(name: 'Ecology', icon: Icons.forest_rounded, description: 'ecology_desc'),
+      FieldItem(name: 'Neuroscience', icon: Icons.insights_rounded, description: 'neuroscience_desc'),
     ],
   };
 
   final OpenAlexApiService _apiService = OpenAlexApiService();
+  final TaxonomyApiService _taxonomyApiService = TaxonomyApiService();
+  static const List<SdgSeed> _sdgSeeds = [
+    SdgSeed(
+      number: 1,
+      title: 'No Poverty',
+      color: Color(0xFFE5243B),
+      icon: Icons.volunteer_activism_rounded,
+    ),
+    SdgSeed(
+      number: 2,
+      title: 'Zero Hunger',
+      color: Color(0xFFDDA63A),
+      icon: Icons.restaurant_rounded,
+    ),
+    SdgSeed(
+      number: 3,
+      title: 'Good Health and Well-Being',
+      color: Color(0xFF4C9F38),
+      icon: Icons.favorite_rounded,
+    ),
+    SdgSeed(
+      number: 4,
+      title: 'Quality Education',
+      color: Color(0xFFC5192D),
+      icon: Icons.menu_book_rounded,
+    ),
+    SdgSeed(
+      number: 5,
+      title: 'Gender Equality',
+      color: Color(0xFFFF3A21),
+      icon: Icons.wc_rounded,
+    ),
+    SdgSeed(
+      number: 6,
+      title: 'Clean Water and Sanitation',
+      color: Color(0xFF26BDE2),
+      icon: Icons.water_drop_rounded,
+    ),
+    SdgSeed(
+      number: 7,
+      title: 'Affordable and Clean Energy',
+      color: Color(0xFFFCC30B),
+      icon: Icons.wb_sunny_rounded,
+    ),
+    SdgSeed(
+      number: 8,
+      title: 'Decent Work and Economic Growth',
+      color: Color(0xFFA21942),
+      icon: Icons.trending_up_rounded,
+    ),
+    SdgSeed(
+      number: 9,
+      title: 'Industry Innovation and Infrastructure',
+      color: Color(0xFFF36D25),
+      icon: Icons.precision_manufacturing_rounded,
+    ),
+    SdgSeed(
+      number: 10,
+      title: 'Reduced Inequalities',
+      color: Color(0xFFDD1367),
+      icon: Icons.balance_rounded,
+    ),
+    SdgSeed(
+      number: 11,
+      title: 'Sustainable Cities and Communities',
+      color: Color(0xFFFD9D24),
+      icon: Icons.location_city_rounded,
+    ),
+    SdgSeed(
+      number: 12,
+      title: 'Responsible Consumption and Production',
+      color: Color(0xFFBF8B2E),
+      icon: Icons.recycling_rounded,
+    ),
+    SdgSeed(
+      number: 13,
+      title: 'Climate Action',
+      color: Color(0xFF3F7E44),
+      icon: Icons.thermostat_rounded,
+    ),
+    SdgSeed(
+      number: 14,
+      title: 'Life Below Water',
+      color: Color(0xFF0A97D9),
+      icon: Icons.waves_rounded,
+    ),
+    SdgSeed(
+      number: 15,
+      title: 'Life on Land',
+      color: Color(0xFF56C02B),
+      icon: Icons.grass_rounded,
+    ),
+    SdgSeed(
+      number: 16,
+      title: 'Peace Justice and Strong Institutions',
+      color: Color(0xFF00689D),
+      icon: Icons.gavel_rounded,
+    ),
+    SdgSeed(
+      number: 17,
+      title: 'Partnerships for the Goals',
+      color: Color(0xFF19486A),
+      icon: Icons.handshake_rounded,
+    ),
+  ];
 
   HomeNotifier() {
     _initData();
     fetchTopAuthors();
+    fetchSdgs();
   }
 
   void _initData() {
@@ -171,14 +303,7 @@ class HomeNotifier {
         GeographyItem(name: 'Vương Quốc Anh', type: 'Quốc gia', publicationCount: '5.4M', growth: '+3.9%'),
         GeographyItem(name: 'Đức', type: 'Quốc gia', publicationCount: '4.8M', growth: '+3.2%'),
       ],
-      sdgs: const [
-        SDGItem(number: 3, title: 'Good Health & Well-being', color: Color(0xFF4C9F38), icon: Icons.favorite_rounded),
-        SDGItem(number: 4, title: 'Quality Education', color: Color(0xFFC7212F), icon: Icons.menu_book_rounded),
-        SDGItem(number: 7, title: 'Affordable & Clean Energy', color: Color(0xFFF99D15), icon: Icons.wb_sunny_rounded),
-        SDGItem(number: 9, title: 'Industry & Innovation', color: Color(0xFFF36D25), icon: Icons.precision_manufacturing_rounded),
-        SDGItem(number: 13, title: 'Climate Action', color: Color(0xFF3F7E44), icon: Icons.thermostat_rounded),
-        SDGItem(number: 15, title: 'Life on Land', color: Color(0xFF56C02B), icon: Icons.grass_rounded),
-      ],
+      sdgs: const <SDGItem>[],
       authors: const <AuthorItem>[],
       institutions: const [
         InstitutionItem(name: 'Harvard University', country: 'Hoa Kỳ', type: 'Trường Đại học', worksCount: '820K'),
@@ -232,6 +357,102 @@ class HomeNotifier {
       );
       debugPrint('Failed to load top authors: $e');
     }
+  }
+
+  Future<void> fetchSdgs() async {
+    stateNotifier.value = stateNotifier.value.copyWith(isLoadingSdgs: true);
+    try {
+      final resolvedSdgs = await Future.wait(
+        _sdgSeeds.map(_resolveSdgSeed),
+      );
+      stateNotifier.value = stateNotifier.value.copyWith(
+        sdgs: resolvedSdgs,
+        isLoadingSdgs: false,
+      );
+    } catch (e) {
+      stateNotifier.value = stateNotifier.value.copyWith(
+        sdgs: _sdgSeeds
+            .map(
+              (seed) => SDGItem(
+                number: seed.number,
+                title: seed.title,
+                color: seed.color,
+                icon: seed.icon,
+                searchQuery: seed.title,
+              ),
+            )
+            .toList(),
+        isLoadingSdgs: false,
+      );
+      debugPrint('Failed to load SDGs from OpenAlex topics: $e');
+    }
+  }
+
+  Future<SDGItem> _resolveSdgSeed(SdgSeed seed) async {
+    try {
+      final topics = await _taxonomyApiService.searchTopics(seed.title, limit: 10);
+      final matchedTopic = _findBestMatchingTopic(seed.title, topics);
+      if (matchedTopic != null) {
+        return SDGItem(
+          number: seed.number,
+          title: matchedTopic.topic.name,
+          color: seed.color,
+          icon: seed.icon,
+          worksCount: matchedTopic.topic.worksCount,
+          searchQuery: matchedTopic.topic.name,
+          taxonomySelection: ResearchTaxonomySelection(
+            domain: matchedTopic.domain,
+            field: matchedTopic.field,
+            subfield: matchedTopic.subfield,
+            topic: matchedTopic.topic,
+          ),
+        );
+      }
+    } catch (_) {
+      // Fall back to the curated SDG metadata below.
+    }
+
+    return SDGItem(
+      number: seed.number,
+      title: seed.title,
+      color: seed.color,
+      icon: seed.icon,
+      searchQuery: seed.title,
+    );
+  }
+
+  ResearchTopic? _findBestMatchingTopic(
+    String expectedTitle,
+    List<ResearchTopic> topics,
+  ) {
+    if (topics.isEmpty) {
+      return null;
+    }
+
+    final normalizedExpected = _normalizeLabel(expectedTitle);
+    for (final topic in topics) {
+      if (_normalizeLabel(topic.topic.name) == normalizedExpected) {
+        return topic;
+      }
+    }
+
+    for (final topic in topics) {
+      final normalizedName = _normalizeLabel(topic.topic.name);
+      if (normalizedName.contains(normalizedExpected) ||
+          normalizedExpected.contains(normalizedName)) {
+        return topic;
+      }
+    }
+
+    return topics.first;
+  }
+
+  String _normalizeLabel(String value) {
+    return value
+        .toLowerCase()
+        .replaceAll('&', 'and')
+        .replaceAll(RegExp(r'[^a-z0-9]+'), ' ')
+        .trim();
   }
 
   /// Thay đổi Domain đang hiển thị

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../../core/utils/formatters.dart';
+import '../../core/utils/translation.dart';
 import '../models/publication_model.dart';
+import '../models/ranking_item_model.dart';
 import '../services/research_analytics_service.dart';
 import '../state_management/shared_state.dart';
 import '../state_management/trend_notifier.dart';
@@ -54,16 +56,63 @@ class _ResearchTrendAnalysisScreenState
     );
   }
 
+  void _showRankedItemInSearch(
+    RankingItemModel item,
+    _LandscapeFilterType filterType,
+  ) {
+    final current = SharedState.publicationFilterNotifier.value;
+    final nextFilter = switch (filterType) {
+      _LandscapeFilterType.source => current.copyWith(
+          selectedAuthors: const [],
+          selectedJournals: [item.name],
+          selectedTopics: const [],
+          fetchAllResults: false,
+        ),
+      _LandscapeFilterType.author => current.copyWith(
+          selectedAuthors: [item.name],
+          selectedJournals: const [],
+          selectedTopics: const [],
+          fetchAllResults: false,
+        ),
+      _LandscapeFilterType.topic => current.copyWith(
+          selectedAuthors: const [],
+          selectedJournals: const [],
+          selectedTopics: [item.name],
+          fetchAllResults: false,
+        ),
+    };
+
+    SharedState.setPublicationFilter(nextFilter);
+    SharedState.activeTabNotifier.value = 1;
+  }
+
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Research Trend Analysis'),
+        title: Text('xu_huong_va_phan_tich'.tr()),
         actions: [
           IconButton(
             icon: const Icon(Icons.account_tree_rounded),
-            tooltip: 'Chọn taxonomy OpenAlex',
+            tooltip: 'select_taxonomy'.tr(),
             onPressed: _openTaxonomySelector,
+          ),
+          ListenableBuilder(
+            listenable: SharedState.languageNotifier,
+            builder: (context, _) {
+              final lang = SharedState.languageNotifier.value;
+              return TextButton(
+                onPressed: SharedState.toggleLanguage,
+                child: Text(
+                  lang.toUpperCase(),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              );
+            },
           ),
           ListenableBuilder(
             listenable: SharedState.themeModeNotifier,
@@ -74,6 +123,7 @@ class _ResearchTrendAnalysisScreenState
                 icon: Icon(
                   isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
                 ),
+                tooltip: isDark ? 'switch_to_light_mode'.tr() : 'switch_to_dark_mode'.tr(),
                 onPressed: () {
                   SharedState.themeModeNotifier.value =
                       isDark ? ThemeMode.light : ThemeMode.dark;
@@ -141,79 +191,91 @@ class _ResearchTrendAnalysisScreenState
                   const SizedBox(height: 16),
                   _buildActiveFilterChips(),
                   const SizedBox(height: 16),
-                  _sectionTitle('Overview'),
+                  _sectionTitle('overview'.tr()),
                   MetricCardGrid(
                     metrics: [
                       MetricCardData(
-                        label: 'Total Publications',
+                        label: 'total_publications'.tr(),
                         value: summary.totalPublications.toString(),
                         icon: Icons.article_rounded,
                       ),
                       MetricCardData(
-                        label: 'Average Citations',
+                        label: 'average_citations'.tr(),
                         value: summary.averageCitations.toStringAsFixed(1),
                         icon: Icons.format_quote_rounded,
                       ),
                       MetricCardData(
-                        label: 'Total Citations',
+                        label: 'total_citations'.tr(),
                         value:
                             Formatters.formatCitationCount(summary.totalCitations),
                         icon: Icons.functions_rounded,
                       ),
                       MetricCardData(
-                        label: 'Most Active Year',
-                        value: summary.mostActiveYear?.toString() ?? 'N/A',
+                        label: 'most_active_year'.tr(),
+                        value: summary.mostActiveYear?.toString() ?? 'n_a'.tr(),
                         icon: Icons.calendar_month_rounded,
                       ),
                       MetricCardData(
-                        label: 'Top Journal',
-                        value: summary.topJournal ?? 'N/A',
+                        label: 'top_journal'.tr(),
+                        value: summary.topJournal ?? 'n_a'.tr(),
                         icon: Icons.menu_book_rounded,
                       ),
                       MetricCardData(
-                        label: 'Top Author',
-                        value: summary.topAuthor ?? 'N/A',
+                        label: 'top_author'.tr(),
+                        value: summary.topAuthor ?? 'n_a'.tr(),
                         icon: Icons.person_rounded,
                       ),
                     ],
                   ),
                   const SizedBox(height: 22),
-                  _sectionTitle('Publication Trend'),
+                  _sectionTitle('publication_trend'.tr()),
                   PublicationTrendChart(trendByYear: analytics.trendByYear),
                   const SizedBox(height: 12),
                   _buildTrendSummary(summary.trendStatus, summary.growthRate),
                   const SizedBox(height: 22),
-                  _sectionTitle('Key Insights'),
+                  _sectionTitle('key_insights'.tr()),
                   KeyInsightsCard(insights: analytics.keyInsights),
                   const SizedBox(height: 22),
-                  _sectionTitle('Research Impact'),
+                  _sectionTitle('research_impact'.tr()),
                   MostInfluentialPaperCard(
                     publication: summary.mostInfluentialPaper,
                     onTap: _openPublication,
                   ),
                   const SizedBox(height: 22),
-                  _sectionTitle('Top Influential Papers'),
+                  _sectionTitle('top_influential_papers'.tr()),
                   TopInfluentialPapersList(
                     publications: analytics.topInfluentialPapers,
                     onTap: _openPublication,
                   ),
                   const SizedBox(height: 22),
-                  _sectionTitle('Citation Distribution'),
+                  _sectionTitle('citation_distribution'.tr()),
                   CitationDistributionChart(
                     buckets: analytics.citationDistribution,
                   ),
                   const SizedBox(height: 22),
-                  _sectionTitle('Research Landscape'),
-                  _subSectionTitle('Top Journals / Sources'),
-                  RankedList(items: analytics.topJournals),
+                  _sectionTitle('research_landscape'.tr()),
+                  _subSectionTitle('top_journals_sources'.tr()),
+                  RankedList(
+                    items: analytics.topJournals,
+                    onItemTap: (item) => _showRankedItemInSearch(
+                      item,
+                      _LandscapeFilterType.source,
+                    ),
+                  ),
                   const SizedBox(height: 16),
-                  _subSectionTitle('Top Authors'),
-                  RankedList(items: analytics.topAuthors),
+                  _subSectionTitle('top_authors'.tr()),
+                  RankedList(
+                    items: analytics.topAuthors,
+                    onItemTap: (item) => _showRankedItemInSearch(
+                      item,
+                      _LandscapeFilterType.author,
+                    ),
+                  ),
                   if (analytics.topFields.isNotEmpty ||
                       analytics.topSubfields.isNotEmpty ||
                       analytics.topTopics.isNotEmpty) ...[
                     const SizedBox(height: 16),
-                    _subSectionTitle('Top Fields / Topics'),
+                    _subSectionTitle('top_fields_topics'.tr()),
                     if (analytics.topFields.isNotEmpty)
                       RankedList(items: analytics.topFields),
                     if (analytics.topSubfields.isNotEmpty) ...[
@@ -222,7 +284,13 @@ class _ResearchTrendAnalysisScreenState
                     ],
                     if (analytics.topTopics.isNotEmpty) ...[
                       const SizedBox(height: 10),
-                      RankedList(items: analytics.topTopics),
+                      RankedList(
+                        items: analytics.topTopics,
+                        onItemTap: (item) => _showRankedItemInSearch(
+                          item,
+                          _LandscapeFilterType.topic,
+                        ),
+                      ),
                     ],
                   ],
                   const SizedBox(height: 24),
@@ -245,13 +313,13 @@ class _ResearchTrendAnalysisScreenState
       chips.add('${scope.yearFrom ?? ''}-${scope.yearTo ?? ''}');
     }
     if (scope.isOpenAccess == true) {
-      chips.add('Open Access');
+      chips.add('open_access'.tr());
     }
     if (scope.minCitationCount != null) {
-      chips.add('Min citations: ${scope.minCitationCount}');
+      chips.add('${'min_citations_label'.tr()}: ${scope.minCitationCount}');
     }
     if (scope.publicationType != null) {
-      chips.add(scope.publicationType!);
+      chips.add(scope.publicationType!.tr());
     }
 
     if (chips.isEmpty) {
@@ -277,15 +345,28 @@ class _ResearchTrendAnalysisScreenState
 
   Widget _buildTrendSummary(String status, double? growthRate) {
     final growth = growthRate == null
-        ? 'N/A'
+        ? 'n_a'.tr()
         : '${growthRate >= 0 ? '+' : ''}${growthRate.toStringAsFixed(1)}%';
     return Row(
       children: [
-        Expanded(child: _summaryPill('Growth Rate', growth)),
+        Expanded(child: _summaryPill('growth_rate'.tr(), growth)),
         const SizedBox(width: 10),
-        Expanded(child: _summaryPill('Trend Status', status)),
+        Expanded(child: _summaryPill('trend_status'.tr(), _translateTrendStatus(status))),
       ],
     );
+  }
+
+  String _translateTrendStatus(String status) {
+    switch (status) {
+      case 'Increasing':
+        return 'increasing_status'.tr();
+      case 'Stable':
+        return 'stable_status'.tr();
+      case 'Declining':
+        return 'declining_status'.tr();
+      default:
+        return 'not_enough_data_status'.tr();
+    }
   }
 
   Widget _summaryPill(String label, String value) {
@@ -361,3 +442,5 @@ class _ResearchTrendAnalysisScreenState
     return '${years.first}-${years.last}';
   }
 }
+
+enum _LandscapeFilterType { source, author, topic }

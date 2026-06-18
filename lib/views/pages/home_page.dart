@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/utils/formatters.dart';
+import '../../core/utils/translation.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/research_taxonomy_selector.dart';
 import '../state_management/home_notifier.dart';
@@ -83,7 +85,7 @@ class _HomePageState extends State<HomePage> {
                 textInputAction: TextInputAction.search,
                 onSubmitted: (_) => _executeHeaderSearch(),
                 decoration: InputDecoration(
-                  hintText: 'Tìm kiếm nhanh bài viết...',
+                  hintText: 'quick_search_hint'.tr(),
                   hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
                   border: InputBorder.none,
                   enabledBorder: InputBorder.none,
@@ -91,7 +93,7 @@ class _HomePageState extends State<HomePage> {
                   contentPadding: EdgeInsets.zero,
                 ),
               )
-            : const Text('Research Home'),
+            : Text('research_home'.tr()),
         leading: _isSearching
             ? IconButton(
                 icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
@@ -107,7 +109,7 @@ class _HomePageState extends State<HomePage> {
           if (!_isSearching)
             IconButton(
               icon: const Icon(Icons.search_rounded, color: Colors.white),
-              tooltip: 'Tìm kiếm nhanh',
+              tooltip: 'quick_search'.tr(),
               onPressed: () {
                 setState(() {
                   _isSearching = true;
@@ -122,12 +124,28 @@ class _HomePageState extends State<HomePage> {
               },
             ),
           ListenableBuilder(
+            listenable: SharedState.languageNotifier,
+            builder: (context, _) {
+              final lang = SharedState.languageNotifier.value;
+              return TextButton(
+                onPressed: SharedState.toggleLanguage,
+                child: Text(
+                  lang.toUpperCase(),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              );
+            },
+          ),
+          ListenableBuilder(
             listenable: SharedState.themeModeNotifier,
             builder: (context, _) {
               final isDark = SharedState.themeModeNotifier.value == ThemeMode.dark;
               return IconButton(
                 icon: Icon(isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded),
-                tooltip: isDark ? 'Chuyển sang giao diện sáng' : 'Chuyển sang giao diện tối',
+                tooltip: isDark ? 'switch_to_light_mode'.tr() : 'switch_to_dark_mode'.tr(),
                 onPressed: () {
                   SharedState.themeModeNotifier.value =
                       isDark ? ThemeMode.light : ThemeMode.dark;
@@ -147,10 +165,10 @@ class _HomePageState extends State<HomePage> {
               children: [
                 _buildResearchHero(theme),
                 const SizedBox(height: 18),
-                _buildSectionHeader(theme, 'Bắt đầu phân tích', Icons.rocket_launch_rounded),
+                _buildSectionHeader(theme, 'explore'.tr(), Icons.rocket_launch_rounded),
                 _buildResearchStartCards(theme),
                 const SizedBox(height: 18),
-                _buildSectionHeader(theme, 'Chủ đề nghiên cứu nhanh', Icons.bolt_rounded),
+                _buildSectionHeader(theme, 'quick_research_topics'.tr(), Icons.bolt_rounded),
                 _buildQuickTopics(theme),
                 const SizedBox(height: 18),
                 const SizedBox(height: 18),
@@ -163,7 +181,7 @@ class _HomePageState extends State<HomePage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Bản Đồ Tri Thức Học Thuật',
+                        'academic_knowledge_map'.tr(),
                         style: theme.textTheme.headlineSmall?.copyWith(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
@@ -171,7 +189,7 @@ class _HomePageState extends State<HomePage> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Khám phá hệ sinh thái thông tin khoa học OpenAlex dữ liệu thực',
+                        'explore_ecosystem'.tr(),
                         style: theme.textTheme.bodyMedium?.copyWith(
                           color: Colors.white70,
                         ),
@@ -183,20 +201,20 @@ class _HomePageState extends State<HomePage> {
                 const SizedBox(height: 12),
 
                 // Phân mục 1: Khám phá theo lĩnh vực (Domain & Fields)
-                _buildSectionHeader(theme, 'Lĩnh Vực Nghiên Cứu', Icons.account_tree_rounded),
+                _buildSectionHeader(theme, 'research_fields'.tr(), Icons.account_tree_rounded),
                 _buildDomainSelector(context, state),
                 _buildFieldsSlider(context, state),
 
                 const SizedBox(height: 20),
 
                 // Phân mục 2: Tác động theo mục tiêu phát triển bền vững (SDGs)
-                _buildSectionHeader(theme, 'Mục Tiêu Phát Triển Bền Vững (SDGs)', Icons.public_rounded),
-                _buildSDGsSlider(context, state),
+                _buildSectionHeader(theme, 'sustainable_development_goals'.tr(), Icons.public_rounded),
+                _buildLiveSDGsSlider(context, state),
 
                 const SizedBox(height: 20),
 
                 // Phân mục 3: Bản đồ địa lý học thuật (Geography Leaderboard)
-                _buildSectionHeader(theme, 'Đơn Vị Địa Lý Học Thuật Nổi Bật', Icons.map_rounded),
+                _buildSectionHeader(theme, 'outstanding_geography'.tr(), Icons.map_rounded),
                 _buildGeographyLeaderboard(theme, state),
 
                 const SizedBox(height: 20),
@@ -238,7 +256,7 @@ class _HomePageState extends State<HomePage> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    'Research Trend Analysis',
+                    'research_trend_analysis'.tr(),
                     style: theme.textTheme.headlineSmall?.copyWith(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
@@ -249,7 +267,7 @@ class _HomePageState extends State<HomePage> {
             ),
             const SizedBox(height: 12),
             Text(
-              'Tìm publication, chọn taxonomy OpenAlex và phân tích trend, citation, top journals, top authors cùng key insights trên một màn hình.',
+              'home_hero_desc'.tr(),
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: Colors.white70,
                 height: 1.35,
@@ -262,7 +280,7 @@ class _HomePageState extends State<HomePage> {
                   child: ElevatedButton.icon(
                     onPressed: () => SharedState.activeTabNotifier.value = 2,
                     icon: const Icon(Icons.analytics_rounded),
-                    label: const Text('Mở Research'),
+                    label: Text('open_research'.tr()),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF80CBC4),
                       foregroundColor: AppColors.primaryText,
@@ -274,7 +292,7 @@ class _HomePageState extends State<HomePage> {
                 IconButton.filledTonal(
                   onPressed: _showTaxonomySelector,
                   icon: const Icon(Icons.account_tree_rounded),
-                  tooltip: 'Chọn taxonomy OpenAlex',
+                  tooltip: 'select_taxonomy'.tr(),
                 ),
               ],
             ),
@@ -288,26 +306,27 @@ class _HomePageState extends State<HomePage> {
     final items = [
       (
         icon: Icons.search_rounded,
-        title: 'Tìm publication',
-        subtitle: 'Search works từ OpenAlex theo topic/keyword.',
+        title: 'find_publication'.tr(),
+        subtitle: 'search_works_desc'.tr(),
         action: () => SharedState.activeTabNotifier.value = 1,
       ),
       (
         icon: Icons.account_tree_rounded,
-        title: 'Chọn taxonomy',
-        subtitle: 'Domain > Field > Subfield > Topic.',
+        title: 'select_taxonomy'.tr(),
+        subtitle: 'select_taxonomy_desc'.tr(),
         action: _showTaxonomySelector,
       ),
       (
         icon: Icons.bar_chart_rounded,
-        title: 'Phân tích trend',
-        subtitle: 'Trend theo năm, citations, journal, author.',
+        title: 'analyze_trend'.tr(),
+        subtitle: 'trend_desc'.tr(),
         action: () => SharedState.activeTabNotifier.value = 2,
       ),
     ];
 
+
     return SizedBox(
-      height: 150,
+      height: 165,
       child: ListView.separated(
         padding: const EdgeInsets.symmetric(horizontal: 16),
         scrollDirection: Axis.horizontal,
@@ -485,7 +504,7 @@ class _HomePageState extends State<HomePage> {
                   return ButtonSegment<String>(
                     value: domain,
                     label: Text(
-                      domain.replaceAll('Khoa học ', ''),
+                      domain.tr(),
                       style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                     ),
                   );
@@ -554,15 +573,14 @@ class _HomePageState extends State<HomePage> {
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        field.description,
+                        field.description.tr(),
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: Colors.white60,
                           fontSize: 10,
                         ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
+                      ),],
                   ),
                 ),
               ),
@@ -574,6 +592,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   /// Trình chiếu ngang danh sách các SDG của Liên Hợp Quốc
+  // ignore: unused_element
   Widget _buildSDGsSlider(BuildContext context, HomeState state) {
     final theme = Theme.of(context);
     return SizedBox(
@@ -694,14 +713,14 @@ class _HomePageState extends State<HomePage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          geo.name,
+                          geo.name.tr(),
                           style: theme.textTheme.labelMedium?.copyWith(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                         Text(
-                          geo.type,
+                          geo.type.tr(),
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: Colors.white54,
                             fontSize: 10,
@@ -762,9 +781,9 @@ class _HomePageState extends State<HomePage> {
               unselectedLabelColor: Colors.white60,
               dividerColor: Colors.white.withOpacity(0.06),
               labelStyle: const TextStyle(fontWeight: FontWeight.bold),
-              tabs: const [
-                Tab(text: 'Tác giả', icon: Icon(Icons.person_rounded, size: 18)),
-                Tab(text: 'Viện & Trường', icon: Icon(Icons.school_rounded, size: 18)),
+              tabs: [
+                Tab(text: 'authors'.tr(), icon: const Icon(Icons.person_rounded, size: 18)),
+                Tab(text: 'institutions'.tr(), icon: const Icon(Icons.school_rounded, size: 18)),
               ],
             ),
             const SizedBox(height: 8),
@@ -793,10 +812,10 @@ class _HomePageState extends State<HomePage> {
     }
     
     if (state.authors.isEmpty) {
-      return const Center(
+      return Center(
         child: Text(
-          'Không có dữ liệu tác giả.',
-          style: TextStyle(color: Colors.white70),
+          'no_author_data'.tr(),
+          style: const TextStyle(color: Colors.white70),
         ),
       );
     }
@@ -841,9 +860,9 @@ class _HomePageState extends State<HomePage> {
                   author.worksCount,
                   style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                 ),
-                const Text(
-                  'bài báo',
-                  style: TextStyle(color: Colors.white30, fontSize: 8),
+                Text(
+                  'article_count'.tr(),
+                  style: const TextStyle(color: Colors.white30, fontSize: 8),
                 ),
               ],
             ),
@@ -876,7 +895,7 @@ class _HomePageState extends State<HomePage> {
               style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
             ),
             subtitle: Text(
-              '${inst.type} • ${inst.country}',
+              '${inst.type.tr()} • ${inst.country.tr()}',
               style: const TextStyle(color: Colors.white54, fontSize: 10),
             ),
             trailing: Column(
@@ -887,15 +906,134 @@ class _HomePageState extends State<HomePage> {
                   inst.worksCount,
                   style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                 ),
-                const Text(
-                  'bài báo',
-                  style: TextStyle(color: Colors.white30, fontSize: 8),
+                Text(
+                  'article_count'.tr(),
+                  style: const TextStyle(color: Colors.white30, fontSize: 8),
                 ),
               ],
             ),
           ),
         );
       },
+    );
+  }
+
+  Widget _buildLiveSDGsSlider(BuildContext context, HomeState state) {
+    final theme = Theme.of(context);
+
+    if (state.isLoadingSdgs) {
+      return const SizedBox(
+        height: 90,
+        child: Center(
+          child: CircularProgressIndicator(color: Colors.white),
+        ),
+      );
+    }
+
+    if (state.sdgs.isEmpty) {
+      return SizedBox(
+        height: 90,
+        child: Center(
+          child: Text(
+            'error_loading_sdg'.tr(),
+            style: const TextStyle(color: Colors.white70),
+          ),
+        ),
+      );
+    }
+
+    return SizedBox(
+      height: 90,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        itemCount: state.sdgs.length,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        itemBuilder: (context, index) {
+          final sdg = state.sdgs[index];
+          return Container(
+            width: 180,
+            margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+            child: Material(
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(16),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(16),
+                onTap: () {
+                  if (sdg.taxonomySelection != null) {
+                    SharedState.setResearchTaxonomy(sdg.taxonomySelection!);
+                  } else {
+                    SharedState.setKeyword(
+                      sdg.searchQuery.isEmpty ? sdg.title : sdg.searchQuery,
+                    );
+                  }
+                  SharedState.activeTabNotifier.value = 1;
+                },
+                child: GlassCard(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  borderRadius: 16,
+                  color: sdg.color.withOpacity(0.2),
+                  borderColor: sdg.color.withOpacity(0.4),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: sdg.color,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(sdg.icon, color: Colors.white, size: 18),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    'Goal ${sdg.number}',
+                                    style: theme.textTheme.labelMedium?.copyWith(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                if (sdg.worksCount > 0)
+                                  Text(
+                                    Formatters.formatCitationCount(sdg.worksCount),
+                                    style: theme.textTheme.labelSmall?.copyWith(
+                                      color: Colors.white70,
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 10,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              sdg.title,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: Colors.white70,
+                                fontSize: 9.5,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 }

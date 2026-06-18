@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/utils/translation.dart';
 import '../models/publication_filter_model.dart';
 import '../state_management/search_notifier.dart';
 import '../state_management/shared_state.dart';
@@ -31,37 +32,41 @@ class SearchActiveFilters extends StatelessWidget {
                 if (filter.fromYear != null || filter.toYear != null)
                   _chip(
                     context,
-                    label: filter.yearLabel,
+                    label: filter.fromYear != null && filter.toYear != null
+                        ? '${filter.fromYear}-${filter.toYear}'
+                        : filter.fromYear != null
+                            ? '${'from'.tr()} ${filter.fromYear}'
+                            : '${'to'.tr()} ${filter.toYear}',
                     onDeleted: notifier.clearYearRange,
                   ),
                 if (filter.minCitations != null)
                   _chip(
                     context,
-                    label: '${filter.minCitations}+ citations',
+                    label: '${filter.minCitations}+ ${'citations'.tr()}',
                     onDeleted: () => notifier.setMinCitations(null),
                   ),
                 if (filter.openAccessOnly)
                   _chip(
                     context,
-                    label: 'Open Access',
+                    label: 'open_access_status'.tr(),
                     onDeleted: () => notifier.setOpenAccessOnly(false),
                   ),
                 if (filter.publicationType != 'all')
                   _chip(
                     context,
-                    label: filter.publicationType,
+                    label: filter.publicationType.tr(),
                     onDeleted: () => notifier.setPublicationType('all'),
                   ),
                 if (filter.sortBy != 'relevance')
                   _chip(
                     context,
-                    label: 'Sort: ${filter.sortLabel}',
+                    label: '${'sort_by_label'.tr()}: ${filter.sortLabelKey.tr().toLowerCase()}',
                     onDeleted: notifier.clearSortBy,
                   ),
                 if (filter.taxonomy.hasSelection)
                   _chip(
                     context,
-                    label: filter.taxonomy.displayLabel,
+                    label: filter.taxonomy.deepest != null ? filter.taxonomy.deepest!.name.tr() : '',
                     onDeleted: () {
                       final current = SharedState.publicationFilterNotifier.value;
                       SharedState.setPublicationFilter(
@@ -73,7 +78,7 @@ class SearchActiveFilters extends StatelessWidget {
                 for (final author in filter.selectedAuthors)
                   _chip(
                     context,
-                    label: 'Author: $author',
+                    label: '${'author_prefix'.tr()}: $author',
                     onDeleted: () {
                       final next = [...filter.selectedAuthors]..remove(author);
                       final current = SharedState.publicationFilterNotifier.value;
@@ -85,16 +90,28 @@ class SearchActiveFilters extends StatelessWidget {
                 for (final journal in filter.selectedJournals)
                   _chip(
                     context,
-                    label: 'Journal: $journal',
+                    label: '${'journal_prefix'.tr()}: $journal',
                     onDeleted: () {
                       final next = [...filter.selectedJournals]..remove(journal);
                       notifier.setJournalFilter(next);
                     },
                   ),
+                for (final topic in filter.selectedTopics)
+                  _chip(
+                    context,
+                    label: 'Topic: $topic',
+                    onDeleted: () {
+                      final next = [...filter.selectedTopics]..remove(topic);
+                      final current = SharedState.publicationFilterNotifier.value;
+                      SharedState.setPublicationFilter(
+                        current.copyWith(selectedTopics: next),
+                      );
+                    },
+                  ),
                 TextButton.icon(
                   onPressed: notifier.clearAllFilters,
                   icon: const Icon(Icons.clear_all_rounded, size: 16),
-                  label: const Text('Clear all'),
+                  label: Text('clear_all'.tr()),
                   style: TextButton.styleFrom(
                     foregroundColor: const Color(0xFF80CBC4),
                     textStyle: theme.textTheme.labelSmall,

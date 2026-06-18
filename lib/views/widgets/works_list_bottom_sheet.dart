@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/utils/translation.dart';
 import '../models/publication_model.dart';
 import '../widgets/glass_card.dart';
 import '../../core/utils/formatters.dart';
@@ -65,12 +66,12 @@ class WorksListBottomSheet extends StatelessWidget {
           const SizedBox(height: 12),
           Flexible(
             child: publications.isEmpty
-                ? const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 24),
+                ? Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 24),
                     child: Center(
                       child: Text(
-                        'Không tìm thấy bài viết nào.',
-                        style: TextStyle(color: Colors.white54),
+                        'no_publications_found'.tr(),
+                        style: const TextStyle(color: Colors.white54),
                       ),
                     ),
                   )
@@ -126,7 +127,7 @@ class WorksListBottomSheet extends StatelessWidget {
                                       ),
                                       const SizedBox(height: 2),
                                       Text(
-                                        'Năm ${pub.publicationYear} • ${Formatters.formatAuthors(pub.authors)}',
+                                        '${'year_label'.tr()} ${pub.publicationYear} • ${Formatters.formatAuthors(pub.authors)}',
                                         style: theme.textTheme.bodySmall?.copyWith(
                                           color: Colors.white70,
                                         ),

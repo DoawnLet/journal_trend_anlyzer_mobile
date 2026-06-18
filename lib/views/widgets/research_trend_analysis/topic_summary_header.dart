@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/utils/translation.dart';
 
 class TopicSummaryHeader extends StatelessWidget {
   final String topic;
@@ -43,7 +44,7 @@ class TopicSummaryHeader extends StatelessWidget {
             spacing: 8,
             runSpacing: 8,
             children: [
-              _chip('$totalPublications publications'),
+              _chip('$totalPublications ${'publications'.tr()}'),
               if (yearRange != null) _chip(yearRange!),
               _chip(dataSource),
             ],

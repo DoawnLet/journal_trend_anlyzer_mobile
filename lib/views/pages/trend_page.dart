@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/utils/formatters.dart';
+import '../../core/utils/translation.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/research_taxonomy_selector.dart';
 import '../widgets/works_list_bottom_sheet.dart';
@@ -121,15 +122,31 @@ class _TrendPageState extends State<TrendPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Xu Hướng & Phân Tích'),
+        title: Text('xu_huong_va_phan_tich'.tr()),
         actions: [
+          ListenableBuilder(
+            listenable: SharedState.languageNotifier,
+            builder: (context, _) {
+              final lang = SharedState.languageNotifier.value;
+              return TextButton(
+                onPressed: SharedState.toggleLanguage,
+                child: Text(
+                  lang.toUpperCase(),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              );
+            },
+          ),
           ListenableBuilder(
             listenable: SharedState.themeModeNotifier,
             builder: (context, _) {
               final isDark = SharedState.themeModeNotifier.value == ThemeMode.dark;
               return IconButton(
                 icon: Icon(isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded),
-                tooltip: isDark ? 'Chuyển sang giao diện sáng' : 'Chuyển sang giao diện tối',
+                tooltip: isDark ? 'switch_to_light_mode'.tr() : 'switch_to_dark_mode'.tr(),
                 onPressed: () {
                   SharedState.themeModeNotifier.value =
                       isDark ? ThemeMode.light : ThemeMode.dark;
@@ -168,8 +185,8 @@ class _TrendPageState extends State<TrendPage> {
                             children: [
                               Text(
                                 scope.hasStructuredFilters
-                                    ? 'Research scope OpenAlex'
-                                    : 'Chủ đề đang phân tích (Chọn để thay đổi)',
+                                    ? 'research_scope_openalex'.tr()
+                                    : 'chu_de_dang_phan_tich'.tr(),
                                 style: theme.textTheme.labelSmall?.copyWith(
                                   color: Colors.white60,
                                 ),
@@ -259,7 +276,7 @@ class _TrendPageState extends State<TrendPage> {
                     children: [
                       // --- Lĩnh vực gợi ý khám phá ---
                       Text(
-                        'Khám phá theo lĩnh vực',
+                        'explore_by_field'.tr(),
                         style: theme.textTheme.titleMedium?.copyWith(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
@@ -301,7 +318,7 @@ class _TrendPageState extends State<TrendPage> {
                                         const SizedBox(width: 8),
                                         Expanded(
                                           child: Text(
-                                            domain['label'] as String,
+                                            (domain['label'] as String).tr(),
                                             style: const TextStyle(
                                               color: Colors.white,
                                               fontSize: 11,
@@ -324,7 +341,7 @@ class _TrendPageState extends State<TrendPage> {
 
                       // --- Gợi ý chủ đề nóng ---
                       Text(
-                        'Chủ đề nóng thịnh hành',
+                        'trending_topics'.tr(),
                         style: theme.textTheme.titleMedium?.copyWith(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
@@ -334,12 +351,12 @@ class _TrendPageState extends State<TrendPage> {
                       _isLoadingTrending
                           ? const SizedBox(height: 40)
                           : _trendingTopics.isEmpty
-                              ? const SizedBox(
+                              ? SizedBox(
                                   height: 40,
                                   child: Center(
                                     child: Text(
-                                      'Không có chủ đề đề xuất.',
-                                      style: TextStyle(color: Colors.white30, fontSize: 11),
+                                      'no_trending_topics'.tr(),
+                                      style: const TextStyle(color: Colors.white30, fontSize: 11),
                                     ),
                                   ),
                                 )
@@ -378,7 +395,7 @@ class _TrendPageState extends State<TrendPage> {
 
                       // --- Mục 1: Biểu đồ đường phân bố số lượng bài viết ---
                       Text(
-                        'Biểu đồ sản lượng theo năm',
+                        'yearly_production_chart'.tr(),
                         style: theme.textTheme.titleLarge?.copyWith(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
@@ -390,7 +407,7 @@ class _TrendPageState extends State<TrendPage> {
 
                       // --- Mục 2: Top bài báo có trích dẫn nhiều nhất ---
                       Text(
-                        'Bài viết có lượt trích dẫn cao nhất',
+                        'most_cited_publications'.tr(),
                         style: theme.textTheme.titleLarge?.copyWith(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
@@ -409,7 +426,7 @@ class _TrendPageState extends State<TrendPage> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Top Tạp chí',
+                                  'top_journals'.tr(),
                                   style: theme.textTheme.titleMedium?.copyWith(
                                     color: Colors.white,
                                     fontWeight: FontWeight.bold,
@@ -426,7 +443,7 @@ class _TrendPageState extends State<TrendPage> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Top Tác giả',
+                                  'top_authors'.tr(),
                                   style: theme.textTheme.titleMedium?.copyWith(
                                     color: Colors.white,
                                     fontWeight: FontWeight.bold,
@@ -454,12 +471,12 @@ class _TrendPageState extends State<TrendPage> {
   Widget _buildTrendChart(ThemeData theme) {
     final dist = widget.notifier.yearlyDistribution;
     if (dist.isEmpty) {
-      return const GlassCard(
-        padding: EdgeInsets.symmetric(vertical: 40),
+      return GlassCard(
+        padding: const EdgeInsets.symmetric(vertical: 40),
         child: Center(
           child: Text(
-            'Không đủ điểm dữ liệu lịch sử để vẽ biểu đồ.',
-            style: TextStyle(color: Colors.white70),
+            'not_enough_trend_data'.tr(),
+            style: const TextStyle(color: Colors.white70),
           ),
         ),
       );
@@ -569,7 +586,7 @@ class _TrendPageState extends State<TrendPage> {
                   final year = last10Years[groupIndex];
                   final val = filteredDist[year]!;
                   return BarTooltipItem(
-                    'Năm $year\n$val bài báo',
+                    '${'chart_tooltip_year'.tr()} $year\n$val ${'chart_tooltip_articles'.tr()}',
                     const TextStyle(
                       color: Color(0xFF80CBC4),
                       fontWeight: FontWeight.bold,
@@ -648,7 +665,7 @@ class _TrendPageState extends State<TrendPage> {
                         ),
                       ),
                       Text(
-                        'trích dẫn',
+                        'trich_dan'.tr(),
                         style: theme.textTheme.labelSmall?.copyWith(fontSize: 9, color: Colors.white70),
                       ),
                     ],
@@ -687,7 +704,7 @@ class _TrendPageState extends State<TrendPage> {
                 isScrollControlled: true,
                 backgroundColor: Colors.transparent,
                 builder: (context) => WorksListBottomSheet(
-                  title: 'Bài viết từ tạp chí:\n${entry.name}',
+                  title: '${'articles_from_journal'.tr()}:\n${entry.name}',
                   publications: journalPubs,
                 ),
               );
@@ -717,7 +734,7 @@ class _TrendPageState extends State<TrendPage> {
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Text(
-                      '${entry.count} bài',
+                      '${entry.count} ${'article_count'.tr()}',
                       style: theme.textTheme.labelSmall?.copyWith(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
@@ -758,7 +775,7 @@ class _TrendPageState extends State<TrendPage> {
                 isScrollControlled: true,
                 backgroundColor: Colors.transparent,
                 builder: (context) => WorksListBottomSheet(
-                  title: 'Bài viết của tác giả:\n${entry.name}',
+                  title: '${'articles_by_author'.tr()}:\n${entry.name}',
                   publications: authorPubs,
                 ),
               );
@@ -788,7 +805,7 @@ class _TrendPageState extends State<TrendPage> {
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Text(
-                      '${entry.count} bài',
+                      '${entry.count} ${'article_count'.tr()}',
                       style: theme.textTheme.labelSmall?.copyWith(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
@@ -817,7 +834,7 @@ class _TrendPageState extends State<TrendPage> {
               const Icon(Icons.error_outline_rounded, color: AppColors.error, size: 48),
               const SizedBox(height: 12),
               Text(
-                'Lỗi tải biểu đồ',
+                'error_loading_chart'.tr(),
                 style: theme.textTheme.titleMedium?.copyWith(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
@@ -839,8 +856,8 @@ class _TrendPageState extends State<TrendPage> {
   Widget _buildEmptyState(ThemeData theme) {
     final activeQuery = SharedState.activeQueryNotifier.value.trim();
     final message = activeQuery.isEmpty
-        ? 'Nhập từ khóa tìm kiếm để bắt đầu vẽ phân tích.'
-        : 'Không có dữ liệu phân tích cho "$activeQuery". Vui lòng thử chủ đề khác.';
+        ? 'search_prompt_trend'.tr()
+        : 'no_trend_data_for'.tr().replaceAll('{topic}', activeQuery);
 
     return Center(
       child: Column(

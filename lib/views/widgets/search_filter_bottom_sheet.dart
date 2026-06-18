@@ -4,6 +4,7 @@ import '../models/publication_filter_model.dart';
 import '../services/filter_option_builder.dart';
 import '../state_management/shared_state.dart';
 import '../state_management/search_notifier.dart';
+import '../../core/utils/translation.dart';
 import 'research_taxonomy_selector.dart';
 
 class SearchFilterBottomSheet extends StatefulWidget {
@@ -46,7 +47,7 @@ class _SearchFilterBottomSheetState extends State<SearchFilterBottomSheet> {
                   padding: const EdgeInsets.fromLTRB(18, 8, 18, 18),
                   children: [
                     _Section(
-                      title: 'Year',
+                      title: 'publication_year'.tr(),
                       icon: Icons.calendar_month_rounded,
                       child: _YearFilter(
                         filter: filter,
@@ -54,7 +55,7 @@ class _SearchFilterBottomSheetState extends State<SearchFilterBottomSheet> {
                       ),
                     ),
                     _Section(
-                      title: 'Citations',
+                      title: 'citation_count'.tr(),
                       icon: Icons.format_quote_rounded,
                       child: _CitationFilter(
                         value: filter.minCitations,
@@ -62,7 +63,7 @@ class _SearchFilterBottomSheetState extends State<SearchFilterBottomSheet> {
                       ),
                     ),
                     _Section(
-                      title: 'Sort by',
+                      title: 'sort_by'.tr(),
                       icon: Icons.sort_rounded,
                       child: _SortFilter(
                         value: filter.sortBy,
@@ -77,15 +78,15 @@ class _SearchFilterBottomSheetState extends State<SearchFilterBottomSheet> {
                       ),
                     ),
                     _Section(
-                      title: 'Open Access',
+                      title: 'open_access'.tr(),
                       icon: Icons.lock_open_rounded,
                       child: SwitchListTile(
                         contentPadding: EdgeInsets.zero,
                         value: filter.openAccessOnly,
                         onChanged: widget.notifier.setOpenAccessOnly,
-                        title: const Text(
-                          'Open Access only',
-                          style: TextStyle(color: Colors.white),
+                        title: Text(
+                          'open_access_only'.tr(),
+                          style: const TextStyle(color: Colors.white),
                         ),
                         subtitle: const Text(
                           'API-level filter: is_oa:true',
@@ -95,7 +96,7 @@ class _SearchFilterBottomSheetState extends State<SearchFilterBottomSheet> {
                       ),
                     ),
                     _Section(
-                      title: 'Publication Type',
+                      title: 'publication_type'.tr(),
                       icon: Icons.category_rounded,
                       child: _TypeFilter(
                         value: filter.publicationType,
@@ -103,10 +104,10 @@ class _SearchFilterBottomSheetState extends State<SearchFilterBottomSheet> {
                       ),
                     ),
                     _Section(
-                      title: 'Authors',
+                      title: 'authors'.tr(),
                       icon: Icons.person_rounded,
                       child: _LocalOptionFilter(
-                        hint: 'Search author...',
+                        hint: 'search_author_hint'.tr(),
                         selectedValues: filter.selectedAuthors,
                         options: FilterOptionBuilder.buildAuthorOptions(
                           widget.notifier.state.originalPublications,
@@ -123,10 +124,10 @@ class _SearchFilterBottomSheetState extends State<SearchFilterBottomSheet> {
                       ),
                     ),
                     _Section(
-                      title: 'Journal / Source',
+                      title: 'journal_prefix'.tr(),
                       icon: Icons.menu_book_rounded,
                       child: _LocalOptionFilter(
-                        hint: 'Search source...',
+                        hint: 'search_journal_hint'.tr(),
                         selectedValues: filter.selectedJournals,
                         options: FilterOptionBuilder.buildJournalOptions(
                           widget.notifier.state.originalPublications,
@@ -138,7 +139,7 @@ class _SearchFilterBottomSheetState extends State<SearchFilterBottomSheet> {
                       ),
                     ),
                     _Section(
-                      title: 'Research Field',
+                      title: 'research_fields'.tr(),
                       icon: Icons.account_tree_rounded,
                       child: InkWell(
                         onTap: _showTaxonomySelector,
@@ -158,7 +159,7 @@ class _SearchFilterBottomSheetState extends State<SearchFilterBottomSheet> {
                                 child: Text(
                                   filter.taxonomy.hasSelection
                                       ? filter.taxonomy.breadcrumb
-                                      : 'Chọn Domain > Field > Subfield > Topic',
+                                      : 'select_taxonomy_desc'.tr(),
                                   style: TextStyle(
                                     color: filter.taxonomy.hasSelection
                                         ? Colors.white
@@ -211,23 +212,23 @@ class _Header extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Advanced Research Filters',
-                  style: TextStyle(
+                Text(
+                  'advanced_filters'.tr(),
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 17,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 Text(
-                  '$activeCount filter đang áp dụng',
+                  'active_filters_applied'.tr().replaceAll('{count}', '$activeCount'),
                   style: const TextStyle(color: Colors.white54, fontSize: 12),
                 ),
               ],
             ),
           ),
           IconButton(
-            tooltip: 'Đóng',
+            tooltip: 'close_button'.tr(),
             onPressed: onClose,
             icon: const Icon(Icons.close_rounded, color: Colors.white70),
           ),
@@ -295,13 +296,13 @@ class _YearFilter extends StatelessWidget {
       spacing: 8,
       runSpacing: 8,
       children: [
-        _choice('All years', filter.fromYear == null && filter.toYear == null,
+        _choice('all_years'.tr(), filter.fromYear == null && filter.toYear == null,
             notifier.clearYearRange),
-        _choice('Last 3 years', filter.fromYear == now - 2,
+        _choice('last_3_years'.tr(), filter.fromYear == now - 2,
             () => notifier.setYearRange(now - 2, now)),
-        _choice('Last 5 years', filter.fromYear == now - 4,
+        _choice('last_5_years'.tr(), filter.fromYear == now - 4,
             () => notifier.setYearRange(now - 4, now)),
-        _choice('Last 10 years', filter.fromYear == now - 9,
+        _choice('last_10_years'.tr(), filter.fromYear == now - 9,
             () => notifier.setYearRange(now - 9, now)),
         _choice('2020-2024', filter.fromYear == 2020 && filter.toYear == 2024,
             () => notifier.setYearRange(2020, 2024)),
@@ -334,7 +335,7 @@ class _CitationFilter extends StatelessWidget {
         for (final item in values)
           ChoiceChip(
             label: Text(
-              item == null ? 'Any citations' : '$item+',
+              item == null ? 'any_citations'.tr() : '$item+',
               style: const TextStyle(fontSize: 12),
             ),
             selected: value == item,
@@ -353,11 +354,11 @@ class _SortFilter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const options = {
-      'relevance': 'Relevance',
-      'most_cited': 'Most cited',
-      'newest': 'Newest',
-      'oldest': 'Oldest',
+    final options = {
+      'relevance': 'relevance'.tr(),
+      'most_cited': 'most_cited'.tr(),
+      'newest': 'newest'.tr(),
+      'oldest': 'oldest'.tr(),
     };
     return Wrap(
       spacing: 8,
@@ -382,13 +383,13 @@ class _TypeFilter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const options = {
-      'all': 'All',
-      'article': 'Article',
-      'review': 'Review',
-      'conference-paper': 'Conference',
-      'book-chapter': 'Book chapter',
-      'preprint': 'Preprint',
+    final options = {
+      'all': 'all'.tr(),
+      'article': 'article'.tr(),
+      'review': 'review'.tr(),
+      'conference-paper': 'conference_paper'.tr(),
+      'book-chapter': 'book_chapter'.tr(),
+      'preprint': 'preprint'.tr(),
     };
     return Wrap(
       spacing: 8,
@@ -444,11 +445,11 @@ class _LocalOptionFilter extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         if (filtered.isEmpty)
-          const Align(
+          Align(
             alignment: Alignment.centerLeft,
             child: Text(
-              'Chưa có option từ kết quả hiện tại.',
-              style: TextStyle(color: Colors.white54, fontSize: 12),
+              'no_options_available'.tr(),
+              style: const TextStyle(color: Colors.white54, fontSize: 12),
             ),
           )
         else
@@ -505,7 +506,7 @@ class _Footer extends StatelessWidget {
             child: OutlinedButton.icon(
               onPressed: onReset,
               icon: const Icon(Icons.restart_alt_rounded),
-              label: const Text('Reset'),
+              label: Text('reset_button'.tr()),
             ),
           ),
           const SizedBox(width: 10),
@@ -513,7 +514,7 @@ class _Footer extends StatelessWidget {
             child: ElevatedButton.icon(
               onPressed: onApply,
               icon: const Icon(Icons.check_rounded),
-              label: const Text('Apply'),
+              label: Text('apply_filters'.tr()),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF80CBC4),
                 foregroundColor: const Color(0xFF0B2545),

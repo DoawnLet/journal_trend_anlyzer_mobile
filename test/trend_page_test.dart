@@ -117,6 +117,9 @@ void main() {
     final fakeService = FakeTrendApiService();
     final notifier = TrendNotifier(apiService: fakeService);
 
+    // Set language to Vietnamese to match assertions
+    SharedState.languageNotifier.value = 'vi';
+
     // Set initial query to empty
     SharedState.activeQueryNotifier.value = '';
 

@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 
 import '../../models/citation_bucket_model.dart';
 
+import '../../../core/utils/translation.dart';
+
 class CitationDistributionChart extends StatelessWidget {
   final List<CitationBucketModel> buckets;
 
@@ -16,12 +18,12 @@ class CitationDistributionChart extends StatelessWidget {
         .toDouble();
 
     if (buckets.isEmpty || maxY == 0) {
-      return const SizedBox(
+      return SizedBox(
         height: 120,
         child: Center(
           child: Text(
-            'Không có dữ liệu citation distribution.',
-            style: TextStyle(color: Colors.white60),
+            'no_citation_data'.tr(),
+            style: const TextStyle(color: Colors.white60),
           ),
         ),
       );

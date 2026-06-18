@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/utils/translation.dart';
 import 'glass_card.dart';
 
 /// Thẻ hiển thị tóm tắt bài báo khoa học.
@@ -70,14 +71,16 @@ class PublicationCard extends StatelessWidget {
                       icon: isOpenAccess
                           ? Icons.lock_open_rounded
                           : Icons.lock_outline_rounded,
-                      label: isOpenAccess ? 'Open access' : 'Closed access',
+                      label: isOpenAccess
+                          ? 'open_access_status'.tr()
+                          : 'closed_access_status'.tr(),
                       color: isOpenAccess
                           ? const Color(0xFF80CBC4)
                           : Colors.white70,
                     ),
                     _MetaChip(
                       icon: Icons.category_rounded,
-                      label: _formatType(publicationType),
+                      label: _formatType(publicationType).tr(),
                       color: Colors.white70,
                     ),
                   ],
@@ -97,7 +100,7 @@ class PublicationCard extends StatelessWidget {
                       child: Text(
                         journalName.isNotEmpty
                             ? journalName
-                            : 'Unknown Journal',
+                            : 'unknown_journal'.tr(),
                         style: theme.textTheme.bodyMedium?.copyWith(
                           color: Colors.white70,
                           fontStyle: FontStyle.italic,
@@ -120,7 +123,7 @@ class PublicationCard extends StatelessWidget {
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(
-                        'Tác giả chính: ${primaryAuthor?.isNotEmpty == true ? primaryAuthor : 'N/A'}',
+                        '${'primary_author_label'.tr()}: ${primaryAuthor?.isNotEmpty == true ? primaryAuthor : 'N/A'}',
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: Colors.white70,
                         ),
@@ -186,7 +189,7 @@ class PublicationCard extends StatelessWidget {
                           ),
                           const SizedBox(width: 2),
                           Text(
-                            '$citationCount trích dẫn',
+                            '$citationCount ${'trich_dan'.tr()}',
                             style: theme.textTheme.bodySmall?.copyWith(
                               color: Colors.white,
                               fontWeight: FontWeight.bold,

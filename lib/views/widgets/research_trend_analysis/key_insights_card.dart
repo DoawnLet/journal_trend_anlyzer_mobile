@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/utils/translation.dart';
 
 class KeyInsightsCard extends StatelessWidget {
   final List<String> insights;
@@ -8,7 +9,7 @@ class KeyInsightsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final items = insights.isEmpty
-        ? const ['Chưa đủ dữ liệu để tạo insight.']
+        ? ['insufficient_data_insights'.tr()]
         : insights;
 
     return Container(

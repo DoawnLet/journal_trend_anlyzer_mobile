@@ -4,7 +4,7 @@ import 'package:journal_trend_analysis_mb/views/models/publication_model.dart';
 import 'package:journal_trend_analysis_mb/views/pages/detail_page.dart';
 
 void main() {
-  testWidgets('DetailPage displays DOI value', (tester) async {
+  testWidgets('DetailPage displays DOI in compact format', (tester) async {
     const publication = Publication(
       id: 'https://openalex.org/W1',
       title: 'A test publication',
@@ -25,6 +25,6 @@ void main() {
     );
 
     expect(find.text('DOI'), findsOneWidget);
-    expect(find.text('https://doi.org/10.1000/test-doi'), findsOneWidget);
+    expect(find.text('DOI: 10.1000/test-doi'), findsOneWidget);
   });
 }

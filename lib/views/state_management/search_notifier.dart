@@ -136,6 +136,7 @@ class SearchNotifier {
 
     final nextFilter = SharedState.publicationFilterNotifier.value;
     final previousFilter = state.filter;
+
     state = state.copyWith(
       filter: nextFilter,
       searchQuery: nextFilter.keyword,
@@ -164,7 +165,8 @@ class SearchNotifier {
         previous.openAccessOnly != next.openAccessOnly ||
         previous.publicationType != next.publicationType ||
         previous.sortBy != next.sortBy ||
-        previous.taxonomy != next.taxonomy;
+        previous.taxonomy != next.taxonomy ||
+        (previous.fetchAllResults ?? false) != (next.fetchAllResults ?? false);
   }
 
   Future<void> executeWorksFetchPipeline({bool showLoading = true}) async {
@@ -172,11 +174,17 @@ class SearchNotifier {
       isLoading: showLoading ? true : state.isLoading,
       errorMessage: '',
     );
-
     try {
       final filter = _effectiveFilter();
-      final data = await _openAlexApiService.getWorksByPublicationFilter(filter);
-      final List results = data['results'] ?? [];
+      final List results;
+      if (filter.fetchAllResults == true) {
+        results = await _openAlexApiService.getAllWorksByPublicationFilter(
+          filter,
+        );
+      } else {
+        final data = await _openAlexApiService.getWorksByPublicationFilter(filter);
+        results = data['results'] ?? [];
+      }
       final originalPublications =
           results.map((json) => Publication.fromJson(json)).toList();
       final filteredPublications =
@@ -228,6 +236,7 @@ class SearchNotifier {
     state = state.copyWith(
       publications: filteredPublications,
       filter: filter,
+      isLoading: false,
       selectedAuthorName:
           filter.selectedAuthors.isEmpty ? null : filter.selectedAuthors.first,
       clearAuthor: filter.selectedAuthors.isEmpty,

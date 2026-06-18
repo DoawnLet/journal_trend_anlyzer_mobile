@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import '../../core/utils/translation.dart';
 import '../widgets/search_advanced_filter_drawer.dart';
 import '../widgets/search_input_field.dart';
 import '../widgets/search_active_filters.dart';
@@ -101,12 +102,28 @@ class _SearchPageState extends State<SearchPage> {
       key: _scaffoldKey,
       endDrawer: SearchAdvancedFilterDrawer(notifier: widget.notifier),
       appBar: AppBar(
-        title: const Text('Research Publications'),
+        title: Text('search_publications'.tr()),
         actions: [
           IconButton(
             icon: const Icon(Icons.filter_list_rounded, color: Colors.white),
-            tooltip: 'Bộ lọc & Sắp xếp',
+            tooltip: 'filter_and_sort'.tr(),
             onPressed: () => _showFilterBottomSheet(context),
+          ),
+          ListenableBuilder(
+            listenable: SharedState.languageNotifier,
+            builder: (context, _) {
+              final lang = SharedState.languageNotifier.value;
+              return TextButton(
+                onPressed: SharedState.toggleLanguage,
+                child: Text(
+                  lang.toUpperCase(),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              );
+            },
           ),
           ListenableBuilder(
             listenable: SharedState.themeModeNotifier,
@@ -114,7 +131,7 @@ class _SearchPageState extends State<SearchPage> {
               final isDark = SharedState.themeModeNotifier.value == ThemeMode.dark;
               return IconButton(
                 icon: Icon(isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded),
-                tooltip: isDark ? 'Chuyển sang giao diện sáng' : 'Chuyển sang giao diện tối',
+                tooltip: isDark ? 'switch_to_light_mode'.tr() : 'switch_to_dark_mode'.tr(),
                 onPressed: () {
                   SharedState.themeModeNotifier.value =
                       isDark ? ThemeMode.light : ThemeMode.dark;
@@ -134,7 +151,7 @@ class _SearchPageState extends State<SearchPage> {
                   ? Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        _buildResearchSearchHeader(theme),
+                        _buildCompactResearchSearchHeader(theme),
                         Padding(
                           padding: const EdgeInsets.all(16.0),
                           child: SearchInputField(
@@ -168,12 +185,13 @@ class _SearchPageState extends State<SearchPage> {
     );
   }
 
+  // ignore: unused_element
   Widget _buildResearchSearchHeader(ThemeData theme) {
     return ValueListenableBuilder(
       valueListenable: SharedState.activeResearchScopeNotifier,
       builder: (context, scope, _) {
         final scopeLabel = scope.displayLabel.isEmpty
-            ? 'Chưa chọn topic'
+            ? 'no_topic_selected'.tr()
             : scope.breadcrumb;
         return Container(
           width: double.infinity,
@@ -197,7 +215,7 @@ class _SearchPageState extends State<SearchPage> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Tìm publication để phân tích',
+                      'find_pub_to_analyze'.tr(),
                       style: theme.textTheme.titleMedium?.copyWith(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
@@ -208,7 +226,7 @@ class _SearchPageState extends State<SearchPage> {
               ),
               const SizedBox(height: 8),
               Text(
-                'Kết quả tìm kiếm sẽ là đầu vào cho trend chart, citation distribution, top papers, journals và authors.',
+                'search_info_desc'.tr(),
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: Colors.white70,
                   height: 1.35,
@@ -232,9 +250,91 @@ class _SearchPageState extends State<SearchPage> {
                   TextButton.icon(
                     onPressed: () => _showFilterBottomSheet(context),
                     icon: const Icon(Icons.tune_rounded, size: 16),
-                    label: const Text('Filter'),
+                    label: Text('filter_and_sort'.tr()),
                     style: TextButton.styleFrom(
                       foregroundColor: const Color(0xFF80CBC4),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildCompactResearchSearchHeader(ThemeData theme) {
+    return ValueListenableBuilder(
+      valueListenable: SharedState.activeResearchScopeNotifier,
+      builder: (context, scope, _) {
+        final scopeLabel =
+            scope.displayLabel.isEmpty ? 'no_topic_selected'.tr() : scope.breadcrumb;
+
+        return Container(
+          width: double.infinity,
+          margin: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.07),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.white.withOpacity(0.12)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  const Icon(
+                    Icons.manage_search_rounded,
+                    color: Color(0xFF80CBC4),
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'find_pub_to_analyze'.tr(),
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  TextButton.icon(
+                    onPressed: () => _showFilterBottomSheet(context),
+                    icon: const Icon(Icons.tune_rounded, size: 15),
+                    label: Text('filter_and_sort'.tr()),
+                    style: TextButton.styleFrom(
+                      foregroundColor: const Color(0xFF80CBC4),
+                      visualDensity: VisualDensity.compact,
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  const Icon(
+                    Icons.adjust_rounded,
+                    color: Colors.white54,
+                    size: 14,
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      'Scope: $scopeLabel',
+                      style: const TextStyle(
+                        color: Colors.white60,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ],
@@ -271,7 +371,7 @@ class _SearchPageState extends State<SearchPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                '$count kết quả cho "$query"',
+                '$count ${'results_for'.tr()} "$query"',
                 style: theme.textTheme.titleSmall?.copyWith(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
@@ -284,21 +384,21 @@ class _SearchPageState extends State<SearchPage> {
                 spacing: 8,
                 runSpacing: 8,
                 children: [
-                  _SummaryChip(label: 'Sắp xếp: ${_sortLabelV2(state.sortBy)}'),
-                  _SummaryChip(label: 'Năm: ${_yearLabelV2(scope)}'),
+                  _SummaryChip(label: '${'sort_by_label'.tr()}: ${_sortLabelV2(state.sortBy)}'),
+                  _SummaryChip(label: '${'year_label'.tr()}: ${_yearLabelV2(scope)}'),
                   if (state.selectedAuthorName != null)
-                    _SummaryChip(label: 'Tác giả: ${state.selectedAuthorName}'),
+                    _SummaryChip(label: '${'authors'.tr()}: ${state.selectedAuthorName}'),
                   if (state.selectedConceptName != null)
                     _SummaryChip(label: 'Concept: ${state.selectedConceptName}'),
                   if (state.selectedTopicName != null)
                     _SummaryChip(label: 'Topic: ${state.selectedTopicName}'),
                   if (scope.isOpenAccess == true)
-                    const _SummaryChip(label: 'Open Access'),
+                    _SummaryChip(label: 'open_access'.tr()),
                   if (scope.publicationType != null)
-                    _SummaryChip(label: 'Loại: ${scope.publicationType}'),
+                    _SummaryChip(label: '${'type_label'.tr()}: ${scope.publicationType}'),
                   if (scope.minCitationCount != null)
                     _SummaryChip(
-                      label: 'Trích dẫn tối thiểu: ${scope.minCitationCount}',
+                      label: '${'min_citations_label'.tr()}: ${scope.minCitationCount}',
                     ),
                 ],
               ),
@@ -327,19 +427,19 @@ class _SearchPageState extends State<SearchPage> {
       return state.searchQuery.trim();
     }
     final activeQuery = SharedState.activeQueryNotifier.value.trim();
-    return activeQuery.isEmpty ? 'Tất cả' : activeQuery;
+    return activeQuery.isEmpty ? 'all'.tr() : activeQuery;
   }
 
   String _sortLabelV2(String? sortBy) {
     switch (sortBy) {
       case 'publication_date:desc':
-        return 'Mới nhất';
+        return 'newest'.tr();
       case 'publication_date:asc':
-        return 'Cũ nhất';
+        return 'oldest'.tr();
       case 'cited_by_count:desc':
-        return 'Trích dẫn cao nhất';
+        return 'most_cited'.tr();
       default:
-        return 'Liên quan nhất';
+        return 'relevance'.tr();
     }
   }
 
@@ -347,15 +447,15 @@ class _SearchPageState extends State<SearchPage> {
     final yearFrom = scope.yearFrom;
     final yearTo = scope.yearTo;
     if (yearFrom == null && yearTo == null) {
-      return 'Tất cả';
+      return 'all'.tr();
     }
     if (yearFrom != null && yearTo != null) {
       return '$yearFrom-$yearTo';
     }
     if (yearFrom != null) {
-      return 'Từ $yearFrom';
+      return '${'from'.tr()} $yearFrom';
     }
-    return 'Đến $yearTo';
+    return '${'to'.tr()} $yearTo';
   }
 
   // ignore: unused_element
@@ -386,7 +486,7 @@ class _SearchPageState extends State<SearchPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                '$count kết quả cho “${query.isEmpty ? 'Tất cả' : query}”',
+                '$count ${'results_for'.tr()} “${query.isEmpty ? 'all'.tr() : query}”',
                 style: theme.textTheme.titleSmall?.copyWith(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
@@ -399,14 +499,14 @@ class _SearchPageState extends State<SearchPage> {
                 spacing: 8,
                 runSpacing: 8,
                 children: [
-                  _SummaryChip(label: 'Sắp xếp: $sort'),
-                  _SummaryChip(label: 'Năm: $year'),
+                  _SummaryChip(label: '${'sort_by_label'.tr()}: $sort'),
+                  _SummaryChip(label: '${'year_label'.tr()}: $year'),
                   if (scope.isOpenAccess == true)
-                    const _SummaryChip(label: 'Open Access'),
+                    _SummaryChip(label: 'open_access'.tr()),
                   if (scope.publicationType != null)
-                    _SummaryChip(label: 'Loại: ${scope.publicationType}'),
+                    _SummaryChip(label: '${'type_label'.tr()}: ${scope.publicationType}'),
                   if (scope.minCitationCount != null)
-                    _SummaryChip(label: 'Min citations: ${scope.minCitationCount}'),
+                    _SummaryChip(label: '${'min_citations_label'.tr()}: ${scope.minCitationCount}'),
                 ],
               ),
             ],
@@ -430,13 +530,13 @@ class _SearchPageState extends State<SearchPage> {
   String _sortLabel(String? sortBy) {
     switch (sortBy) {
       case 'publication_date:desc':
-        return 'Mới nhất';
+        return 'newest'.tr();
       case 'publication_date:asc':
-        return 'Cũ nhất';
+        return 'oldest'.tr();
       case 'cited_by_count:desc':
-        return 'Trích dẫn cao nhất';
+        return 'most_cited'.tr();
       default:
-        return 'Liên quan nhất';
+        return 'relevance'.tr();
     }
   }
 
@@ -444,15 +544,15 @@ class _SearchPageState extends State<SearchPage> {
     final yearFrom = scope.yearFrom;
     final yearTo = scope.yearTo;
     if (yearFrom == null && yearTo == null) {
-      return 'Tất cả';
+      return 'all'.tr();
     }
     if (yearFrom != null && yearTo != null) {
       return '$yearFrom-$yearTo';
     }
     if (yearFrom != null) {
-      return 'Từ $yearFrom';
+      return '${'from'.tr()} $yearFrom';
     }
-    return 'Đến $yearTo';
+    return '${'to'.tr()} $yearTo';
   }
 
   Widget _buildResultToolbar(ThemeData theme) {
@@ -478,7 +578,7 @@ class _SearchPageState extends State<SearchPage> {
             children: [
               Expanded(
                 child: Text(
-                  '$count publications ready for analysis',
+                  '$count ${'ready_for_analysis'.tr()}',
                   style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
@@ -491,7 +591,7 @@ class _SearchPageState extends State<SearchPage> {
                   SharedState.activeTabNotifier.value = 2;
                 },
                 icon: const Icon(Icons.insights_rounded, size: 16),
-                label: const Text('Analyze'),
+                label: Text('analyze'.tr()),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF80CBC4),
                   foregroundColor: const Color(0xFF0B2545),

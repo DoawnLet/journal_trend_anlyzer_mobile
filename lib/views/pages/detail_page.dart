@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/utils/translation.dart';
 import '../widgets/glass_card.dart';
 import '../models/publication_model.dart';
 import '../state_management/shared_state.dart';
@@ -14,13 +15,13 @@ class DetailPage extends StatelessWidget {
   Future<void> _openDoiLink(BuildContext context, String doiUrl) async {
     final cleanDoi = doiUrl.trim();
     if (cleanDoi.isEmpty) {
-      _showDoiError(context, 'Liên kết DOI không hợp lệ.');
+      _showDoiError(context, 'doi_link_invalid'.tr());
       return;
     }
 
     final uri = _normalizeDoiUri(cleanDoi);
     if (uri == null) {
-      _showDoiError(context, 'Liên kết DOI không hợp lệ.');
+      _showDoiError(context, 'doi_link_invalid'.tr());
       return;
     }
 
@@ -34,14 +35,14 @@ class DetailPage extends StatelessWidget {
       }
 
       if (!launched) {
-        _showDoiError(context, 'Không tìm thấy ứng dụng có thể mở liên kết.');
+        _showDoiError(context, 'no_app_to_open_link'.tr());
       }
     } catch (e) {
       if (!context.mounted) {
         return;
       }
 
-      _showDoiError(context, 'Không thể mở liên kết DOI: $e');
+      _showDoiError(context, '${'cannot_open_doi'.tr()}: $e');
     }
   }
 
@@ -62,6 +63,17 @@ class DetailPage extends StatelessWidget {
     return Uri.https('doi.org', doiPath);
   }
 
+  String _formatDoiDisplay(String doiUrl) {
+    return doiUrl
+        .trim()
+        .replaceFirst(RegExp(r'^doi:\s*', caseSensitive: false), '')
+        .replaceFirst(
+          RegExp(r'^https?://(dx\.)?doi\.org/', caseSensitive: false),
+          '',
+        )
+        .replaceFirst(RegExp(r'^(dx\.)?doi\.org/', caseSensitive: false), '');
+  }
+
   void _showDoiError(BuildContext context, String message) {
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -76,7 +88,7 @@ class DetailPage extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Chi Tiết Bài Báo'),
+        title: Text('publication_detail'.tr()),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
           onPressed: () => Navigator.pop(context),
@@ -113,7 +125,7 @@ class DetailPage extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Tác giả:',
+                          'author_label'.tr(),
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: Colors.white70,
                             fontWeight: FontWeight.bold,
@@ -122,7 +134,7 @@ class DetailPage extends StatelessWidget {
                         const SizedBox(height: 8),
                         if (publication.authors.isEmpty)
                           Text(
-                            'Không rõ tác giả',
+                            'unknown_author'.tr(),
                             style: theme.textTheme.bodyMedium?.copyWith(
                               color: Colors.white70,
                               fontStyle: FontStyle.italic,
@@ -172,7 +184,7 @@ class DetailPage extends StatelessWidget {
                     size: 16,
                     color: Colors.white,
                   ),
-                  label: Text('Năm: ${publication.publicationYear}'),
+                  label: Text('${'year_label'.tr()}: ${publication.publicationYear}'),
                 ),
                 Chip(
                   avatar: const Icon(
@@ -180,7 +192,7 @@ class DetailPage extends StatelessWidget {
                     size: 16,
                     color: Colors.white,
                   ),
-                  label: Text('${publication.citationCount} trích dẫn'),
+                  label: Text('${publication.citationCount} ${'citations'.tr()}'),
                 ),
                 if (publication.journalName.isNotEmpty)
                   Chip(
@@ -219,7 +231,7 @@ class DetailPage extends StatelessWidget {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            publication.doi!,
+                            'DOI: ${_formatDoiDisplay(publication.doi!)}',
                             style: theme.textTheme.bodyMedium?.copyWith(
                               color: Colors.white,
                               height: 1.35,
@@ -235,7 +247,7 @@ class DetailPage extends StatelessWidget {
               ElevatedButton.icon(
                 onPressed: () => _openDoiLink(context, publication.doi!),
                 icon: const Icon(Icons.open_in_new_rounded, size: 18),
-                label: const Text('Mở liên kết DOI'),
+                label: Text('open_doi_link'.tr()),
                 style: ElevatedButton.styleFrom(
                   minimumSize: const Size.fromHeight(50),
                 ),
@@ -244,7 +256,7 @@ class DetailPage extends StatelessWidget {
             ],
             if (publication.concepts.isNotEmpty) ...[
               Text(
-                'Khái niệm (Concepts)',
+                'concepts'.tr(),
                 style: theme.textTheme.titleMedium?.copyWith(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
@@ -277,7 +289,7 @@ class DetailPage extends StatelessWidget {
             ],
             if (publication.topics.isNotEmpty) ...[
               Text(
-                'Chủ đề (Topics)',
+                'topics'.tr(),
                 style: theme.textTheme.titleMedium?.copyWith(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
@@ -309,7 +321,7 @@ class DetailPage extends StatelessWidget {
               const SizedBox(height: 20),
             ],
             Text(
-              'Tóm tắt (Abstract)',
+              'abstract'.tr(),
               style: theme.textTheme.titleMedium?.copyWith(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,
@@ -321,7 +333,7 @@ class DetailPage extends StatelessWidget {
               child: Text(
                 publication.abstractText.isNotEmpty
                     ? publication.abstractText
-                    : 'Bài báo này không cung cấp bản tóm tắt.',
+                    : 'no_abstract_available'.tr(),
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: Colors.white.withOpacity(0.9),
                   height: 1.5,

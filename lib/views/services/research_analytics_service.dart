@@ -2,6 +2,7 @@ import '../models/citation_bucket_model.dart';
 import '../models/publication_model.dart';
 import '../models/ranking_item_model.dart';
 import '../models/research_trend_summary_model.dart';
+import '../state_management/shared_state.dart';
 
 class ResearchAnalyticsResult {
   final ResearchTrendSummary summary;
@@ -63,7 +64,7 @@ class ResearchAnalyticsService {
       topSubfields: topSubfields,
       topTopics: topTopics,
       citationDistribution: calculateCitationDistribution(publications),
-      keyInsights: generateVietnameseKeyInsights(
+      keyInsights: generateKeyInsights(
         topic: topic,
         summary: summary,
         trendByYear: trendByYear,
@@ -117,15 +118,36 @@ class ResearchAnalyticsService {
     }
 
     final years = trendByYear.keys.toList()..sort();
-    final latestYear = years[years.length - 1];
-    final previousYear = years[years.length - 2];
-    final latestCount = trendByYear[latestYear] ?? 0;
-    final previousCount = trendByYear[previousYear] ?? 0;
-    if (previousCount == 0) {
+    
+    // Dynamically select sliding window size (k) based on number of active years
+    int k = 3;
+    if (years.length < 4) {
+      k = 1;
+    } else if (years.length < 6) {
+      k = 2;
+    }
+
+    // Get the k most recent active years
+    final recentYears = years.sublist(years.length - k);
+    double recentSum = 0;
+    for (final year in recentYears) {
+      recentSum += trendByYear[year] ?? 0;
+    }
+    final recentAverage = recentSum / k;
+
+    // Get the k active years preceding the most recent ones
+    final previousYears = years.sublist(years.length - 2 * k, years.length - k);
+    double previousSum = 0;
+    for (final year in previousYears) {
+      previousSum += trendByYear[year] ?? 0;
+    }
+    final previousAverage = previousSum / k;
+
+    if (previousAverage == 0) {
       return null;
     }
 
-    return ((latestCount - previousCount) / previousCount) * 100;
+    return ((recentAverage - previousAverage) / previousAverage) * 100;
   }
 
   String calculateTrendStatus(Map<int, int> trendByYear) {
@@ -133,22 +155,19 @@ class ResearchAnalyticsService {
       return 'Not enough data';
     }
 
-    final years = trendByYear.keys.toList()..sort();
-    final latest = trendByYear[years.last] ?? 0;
-    final previous = trendByYear[years[years.length - 2]] ?? 0;
-    if (previous == 0 && latest > 0) {
-      return 'Increasing';
+    final growthRate = calculateGrowthRate(trendByYear);
+    if (growthRate == null) {
+      return 'Not enough data';
     }
 
-    final difference = latest - previous;
-    final threshold = previous * 0.1;
-    if (difference > threshold) {
+    // Trend status classification threshold (10% growth/decline)
+    if (growthRate > 10.0) {
       return 'Increasing';
-    }
-    if (difference.abs() <= threshold) {
+    } else if (growthRate < -10.0) {
+      return 'Declining';
+    } else {
       return 'Stable';
     }
-    return 'Declining';
   }
 
   Publication? findMostInfluentialPaper(List<Publication> publications) {
@@ -256,45 +275,70 @@ class ResearchAnalyticsService {
     ];
   }
 
-  List<String> generateVietnameseKeyInsights({
+  List<String> generateKeyInsights({
     required String topic,
     required ResearchTrendSummary summary,
     required Map<int, int> trendByYear,
   }) {
+    final isEn = SharedState.languageNotifier.value == 'en';
     if (summary.totalPublications == 0) {
-      return const ['Chưa đủ dữ liệu để tạo insight.'];
+      return isEn 
+          ? const ['Not enough data to generate insights.']
+          : const ['Chưa đủ dữ liệu để tạo insight.'];
     }
 
-    final insights = <String>[
-      'Chủ đề "$topic" có ${summary.totalPublications} publication trong tập dữ liệu đang phân tích.',
-      'Tổng số citation là ${summary.totalCitations}, trung bình ${summary.averageCitations.toStringAsFixed(1)} citation mỗi publication.',
-    ];
+    final insights = <String>[];
+    if (isEn) {
+      insights.add('The topic "$topic" has ${summary.totalPublications} publications in the analyzed dataset.');
+      insights.add('Total citations are ${summary.totalCitations}, averaging ${summary.averageCitations.toStringAsFixed(1)} citations per publication.');
+    } else {
+      insights.add('Chủ đề "$topic" có ${summary.totalPublications} publication trong tập dữ liệu đang phân tích.');
+      insights.add('Tổng số citation là ${summary.totalCitations}, trung bình ${summary.averageCitations.toStringAsFixed(1)} citation mỗi publication.');
+    }
 
     if (summary.mostActiveYear != null) {
       final count = trendByYear[summary.mostActiveYear] ?? 0;
-      insights.add(
-        'Hoạt động công bố cao nhất vào năm ${summary.mostActiveYear} với $count publication.',
-      );
+      if (isEn) {
+        insights.add('Publication activity peaked in ${summary.mostActiveYear} with $count publications.');
+      } else {
+        insights.add('Hoạt động công bố cao nhất vào năm ${summary.mostActiveYear} với $count publication.');
+      }
     }
     if (summary.trendStatus != 'Not enough data') {
-      insights.add('Xu hướng hiện tại: ${_trendStatusVi(summary.trendStatus)}.');
+      if (isEn) {
+        insights.add('Current trend: ${summary.trendStatus.toLowerCase()}.');
+      } else {
+        insights.add('Xu hướng hiện tại: ${_trendStatusVi(summary.trendStatus)}.');
+      }
     }
     if (summary.growthRate != null) {
       final sign = summary.growthRate! >= 0 ? '+' : '';
-      insights.add(
-        'Tốc độ tăng trưởng giữa hai năm gần nhất là $sign${summary.growthRate!.toStringAsFixed(1)}%.',
-      );
+      if (isEn) {
+        insights.add('Growth rate between the last two years is $sign${summary.growthRate!.toStringAsFixed(1)}%.');
+      } else {
+        insights.add('Tốc độ tăng trưởng giữa hai năm gần nhất là $sign${summary.growthRate!.toStringAsFixed(1)}%.');
+      }
     }
     if (summary.topJournal != null) {
-      insights.add('${summary.topJournal} là journal/source xuất hiện nhiều nhất.');
+      if (isEn) {
+        insights.add('${summary.topJournal} is the most frequent journal/source.');
+      } else {
+        insights.add('${summary.topJournal} là journal/source xuất hiện nhiều nhất.');
+      }
     }
     if (summary.topAuthor != null) {
-      insights.add('${summary.topAuthor} là tác giả đóng góp nhiều nhất.');
+      if (isEn) {
+        insights.add('${summary.topAuthor} is the top contributing author.');
+      } else {
+        insights.add('${summary.topAuthor} là tác giả đóng góp nhiều nhất.');
+      }
     }
     if (summary.mostInfluentialPaper != null) {
-      insights.add(
-        'Publication có ảnh hưởng nhất đạt ${summary.mostInfluentialPaper!.citationCount} citation.',
-      );
+      if (isEn) {
+        insights.add('The most influential publication reached ${summary.mostInfluentialPaper!.citationCount} citations.');
+      } else {
+        insights.add('Publication có ảnh hưởng nhất đạt ${summary.mostInfluentialPaper!.citationCount} citation.');
+      }
     }
 
     return insights;

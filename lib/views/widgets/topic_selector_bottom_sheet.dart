@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/utils/translation.dart';
 import '../services/openalex_api_service.dart';
 import '../state_management/shared_state.dart';
 
@@ -143,7 +144,7 @@ class _TopicSelectorBottomSheetState extends State<TopicSelectorBottomSheet> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Chọn Chủ Đề Phân Tích',
+                  'select_analysis_topic'.tr(),
                   style: theme.textTheme.titleMedium?.copyWith(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
@@ -164,7 +165,7 @@ class _TopicSelectorBottomSheetState extends State<TopicSelectorBottomSheet> {
               style: const TextStyle(color: Colors.white, fontSize: 14),
               onChanged: _onSearch,
               decoration: InputDecoration(
-                hintText: 'Nhập từ khóa chủ đề (vd: Deep Learning)...',
+                hintText: 'enter_topic_keyword_hint'.tr(),
                 hintStyle: const TextStyle(color: Colors.white38),
                 prefixIcon: const Icon(Icons.search_rounded, color: Colors.white54),
                 suffixIcon: _isSearching
@@ -202,7 +203,7 @@ class _TopicSelectorBottomSheetState extends State<TopicSelectorBottomSheet> {
 
             // Các chủ đề phổ biến
             Text(
-              'Chủ đề phổ biến',
+              'popular_topics'.tr(),
               style: theme.textTheme.labelMedium?.copyWith(
                 color: Colors.white70,
                 fontWeight: FontWeight.bold,
@@ -256,7 +257,7 @@ class _TopicSelectorBottomSheetState extends State<TopicSelectorBottomSheet> {
             // Gợi ý danh sách kết quả tìm kiếm từ API
             if (_topicSuggestions.isNotEmpty) ...[
               Text(
-                'Gợi ý kết quả tìm kiếm',
+                'search_suggestions'.tr(),
                 style: theme.textTheme.labelMedium?.copyWith(
                   color: Colors.white70,
                   fontWeight: FontWeight.bold,
@@ -295,12 +296,12 @@ class _TopicSelectorBottomSheetState extends State<TopicSelectorBottomSheet> {
                 ),
               ),
             ] else if (_searchController.text.isNotEmpty && !_isSearching) ...[
-              const Center(
+              Center(
                 child: Padding(
-                  padding: EdgeInsets.symmetric(vertical: 24),
+                  padding: const EdgeInsets.symmetric(vertical: 24),
                   child: Text(
-                    'Không tìm thấy chủ đề nào phù hợp.',
-                    style: TextStyle(color: Colors.white54, fontSize: 12),
+                    'no_topics_found'.tr(),
+                    style: const TextStyle(color: Colors.white54, fontSize: 12),
                   ),
                 ),
               ),

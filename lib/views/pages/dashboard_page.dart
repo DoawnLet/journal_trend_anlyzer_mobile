@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/utils/formatters.dart';
+import '../../core/utils/translation.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/analytic_box.dart';
 import '../widgets/publication_card.dart';
@@ -30,15 +31,31 @@ class DashboardPage extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Phân Tích Tổng Quan'),
+        title: Text('dashboard_title'.tr()),
         actions: [
+          ListenableBuilder(
+            listenable: SharedState.languageNotifier,
+            builder: (context, _) {
+              final lang = SharedState.languageNotifier.value;
+              return TextButton(
+                onPressed: SharedState.toggleLanguage,
+                child: Text(
+                  lang.toUpperCase(),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              );
+            },
+          ),
           ListenableBuilder(
             listenable: SharedState.themeModeNotifier,
             builder: (context, _) {
               final isDark = SharedState.themeModeNotifier.value == ThemeMode.dark;
               return IconButton(
                 icon: Icon(isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded),
-                tooltip: isDark ? 'Chuyển sang giao diện sáng' : 'Chuyển sang giao diện tối',
+                tooltip: isDark ? 'switch_to_light_mode'.tr() : 'switch_to_dark_mode'.tr(),
                 onPressed: () {
                   SharedState.themeModeNotifier.value =
                       isDark ? ThemeMode.light : ThemeMode.dark;
@@ -108,7 +125,7 @@ class DashboardPage extends StatelessWidget {
                       color: Colors.white70,
                     ),
                     children: [
-                      const TextSpan(text: 'bạn đang thực hiện phân tích theo từ khóa: '),
+                      TextSpan(text: 'active_analysis_keyword_prefix'.tr()),
                       TextSpan(
                         text: SharedState.activeQueryNotifier.value.isEmpty
                             ? 'Artificial Intelligence'
@@ -133,30 +150,30 @@ class DashboardPage extends StatelessWidget {
                   childAspectRatio: 1.3,
                   children: [
                     AnalyticBox(
-                      label: 'Tổng số công bố',
+                      label: 'total_publications_short'.tr(),
                       value: notifier.totalPublications.toString(),
                       icon: Icons.article_rounded,
-                      trendText: 'Quy mô',
+                      trendText: 'scale_metric'.tr(),
                     ),
                     AnalyticBox(
-                      label: 'Trích dẫn TB',
+                      label: 'avg_citations_short'.tr(),
                       value: notifier.averageCitations.toStringAsFixed(1),
                       icon: Icons.format_quote_rounded,
-                      trendText: 'Ảnh hưởng',
+                      trendText: 'impact_metric'.tr(),
                     ),
                     AnalyticBox(
-                      label: 'Năm tích cực nhất',
-                      value: notifier.mostActiveYear == 0 ? 'N/A' : notifier.mostActiveYear.toString(),
+                      label: 'most_active_year_short'.tr(),
+                      value: notifier.mostActiveYear == 0 ? 'n_a'.tr() : notifier.mostActiveYear.toString(),
                       icon: Icons.calendar_month_rounded,
-                      trendText: 'Bùng nổ',
+                      trendText: 'peak_metric'.tr(),
                     ),
                     AnalyticBox(
-                      label: 'Bài báo ảnh hưởng',
+                      label: 'influential_paper_short'.tr(),
                       value: notifier.mostInfluentialPaper != null
                           ? Formatters.formatCitationCount(notifier.mostInfluentialPaper!.citationCount)
                           : '0',
                       icon: Icons.star_rounded,
-                      trendText: 'Max Cites',
+                      trendText: 'max_cites_metric'.tr(),
                     ),
                   ],
                 ),
@@ -164,7 +181,7 @@ class DashboardPage extends StatelessWidget {
 
                 // --- 2. Khối hiển thị Outlier: Tạp chí nổi bật ---
                 Text(
-                  'Tạp chí xuất bản nhiều nhất',
+                  'top_journal_publisher'.tr(),
                   style: theme.textTheme.titleLarge?.copyWith(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
@@ -174,12 +191,11 @@ class DashboardPage extends StatelessWidget {
                 _buildOutlierCard(
                   theme: theme,
                   title: notifier.topJournalName,
-                  subtitle: 'Đóng góp ${notifier.topJournalCount} bài báo khoa học',
+                  subtitle: 'contributed_publications'.tr().replaceAll('{count}', '${notifier.topJournalCount}'),
                   icon: Icons.menu_book_rounded,
                   iconColor: const Color(0xFF80CBC4),
                   onTap: () {
-                    if (notifier.topJournalName == 'Không có dữ liệu' ||
-                        notifier.topJournalName == 'N/A' ||
+                    if (notifier.topJournalName == 'N/A' ||
                         notifier.topJournalName.isEmpty) {
                       return;
                     }
@@ -191,7 +207,7 @@ class DashboardPage extends StatelessWidget {
                       isScrollControlled: true,
                       backgroundColor: Colors.transparent,
                       builder: (context) => WorksListBottomSheet(
-                        title: 'Bài viết từ tạp chí:\n${notifier.topJournalName}',
+                        title: '${'articles_from_journal'.tr()}:\n${notifier.topJournalName}',
                         publications: journalPubs,
                       ),
                     );
@@ -201,7 +217,7 @@ class DashboardPage extends StatelessWidget {
 
                 // --- 3. Khối hiển thị Outlier: Tác giả tiêu biểu ---
                 Text(
-                  'Tác giả đóng góp nhiều nhất',
+                  'top_author_contributor'.tr(),
                   style: theme.textTheme.titleLarge?.copyWith(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
@@ -211,12 +227,11 @@ class DashboardPage extends StatelessWidget {
                 _buildOutlierCard(
                   theme: theme,
                   title: notifier.topAuthorName,
-                  subtitle: 'Số lượng tác phẩm: ${notifier.topAuthorCount} bài viết',
+                  subtitle: 'author_works_count'.tr().replaceAll('{count}', '${notifier.topAuthorCount}'),
                   icon: Icons.person_pin_rounded,
                   iconColor: const Color(0xFF80CBC4),
                   onTap: () {
-                    if (notifier.topAuthorName == 'Không có dữ liệu' ||
-                        notifier.topAuthorName == 'N/A' ||
+                    if (notifier.topAuthorName == 'N/A' ||
                         notifier.topAuthorName.isEmpty) {
                       return;
                     }
@@ -228,7 +243,7 @@ class DashboardPage extends StatelessWidget {
                       isScrollControlled: true,
                       backgroundColor: Colors.transparent,
                       builder: (context) => WorksListBottomSheet(
-                        title: 'Bài viết của tác giả:\n${notifier.topAuthorName}',
+                        title: '${'articles_by_author'.tr()}:\n${notifier.topAuthorName}',
                         publications: authorPubs,
                       ),
                     );
@@ -238,7 +253,7 @@ class DashboardPage extends StatelessWidget {
 
                 if (notifier.mostInfluentialPaper != null) ...[
                   Text(
-                    'Bài báo có sức ảnh hưởng nhất',
+                    'most_influential_paper_title'.tr(),
                     style: theme.textTheme.titleLarge?.copyWith(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
@@ -347,7 +362,7 @@ class DashboardPage extends StatelessWidget {
               const Icon(Icons.error_outline_rounded, color: AppColors.error, size: 48),
               const SizedBox(height: 12),
               Text(
-                'Lỗi dữ liệu Dashboard',
+                'dashboard_error'.tr(),
                 style: theme.textTheme.titleMedium?.copyWith(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
@@ -378,10 +393,11 @@ class DashboardPage extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           Text(
-            'Nhập từ khóa để thực hiện phân tích tổng quan.',
+            'dashboard_empty_prompt'.tr(),
             style: theme.textTheme.titleMedium?.copyWith(
               color: Colors.white,
             ),
+            textAlign: TextAlign.center,
           ),
         ],
       ),

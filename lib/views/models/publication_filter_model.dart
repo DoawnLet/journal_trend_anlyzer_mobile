@@ -10,7 +10,9 @@ class PublicationFilter {
   final String publicationType;
   final List<String> selectedAuthors;
   final List<String> selectedJournals;
+  final List<String> selectedTopics;
   final ResearchTaxonomySelection taxonomy;
+  final bool? fetchAllResults;
 
   const PublicationFilter({
     this.keyword = '',
@@ -22,7 +24,9 @@ class PublicationFilter {
     this.publicationType = 'all',
     this.selectedAuthors = const [],
     this.selectedJournals = const [],
+    this.selectedTopics = const [],
     this.taxonomy = ResearchTaxonomySelection.empty,
+    this.fetchAllResults = false,
   });
 
   static const empty = PublicationFilter();
@@ -36,6 +40,7 @@ class PublicationFilter {
       publicationType != 'all' ||
       selectedAuthors.isNotEmpty ||
       selectedJournals.isNotEmpty ||
+      selectedTopics.isNotEmpty ||
       taxonomy.hasSelection;
 
   int get activeFilterCount {
@@ -47,6 +52,7 @@ class PublicationFilter {
     if (publicationType != 'all') count++;
     if (selectedAuthors.isNotEmpty) count++;
     if (selectedJournals.isNotEmpty) count++;
+    if (selectedTopics.isNotEmpty) count++;
     if (taxonomy.hasSelection) count++;
     return count;
   }
@@ -63,6 +69,7 @@ class PublicationFilter {
   bool get hasLocalFilters =>
       selectedAuthors.isNotEmpty ||
       selectedJournals.isNotEmpty ||
+      selectedTopics.isNotEmpty ||
       taxonomy.hasSelection;
 
   String? get openAlexSort {
@@ -91,6 +98,19 @@ class PublicationFilter {
     }
   }
 
+  String get sortLabelKey {
+    switch (sortBy) {
+      case 'most_cited':
+        return 'most_cited';
+      case 'newest':
+        return 'newest';
+      case 'oldest':
+        return 'oldest';
+      default:
+        return 'relevance';
+    }
+  }
+
   String get yearLabel {
     if (fromYear == null && toYear == null) return 'Tất cả';
     if (fromYear != null && toYear != null) return '$fromYear-$toYear';
@@ -108,7 +128,9 @@ class PublicationFilter {
     String? publicationType,
     List<String>? selectedAuthors,
     List<String>? selectedJournals,
+    List<String>? selectedTopics,
     ResearchTaxonomySelection? taxonomy,
+    bool? fetchAllResults,
     bool clearYear = false,
     bool clearCitations = false,
     bool clearTaxonomy = false,
@@ -123,9 +145,11 @@ class PublicationFilter {
       publicationType: publicationType ?? this.publicationType,
       selectedAuthors: selectedAuthors ?? this.selectedAuthors,
       selectedJournals: selectedJournals ?? this.selectedJournals,
+      selectedTopics: selectedTopics ?? this.selectedTopics,
       taxonomy: clearTaxonomy
           ? ResearchTaxonomySelection.empty
           : (taxonomy ?? this.taxonomy),
+      fetchAllResults: fetchAllResults ?? this.fetchAllResults ?? false,
     );
   }
 

@@ -170,6 +170,59 @@ class OpenAlexApiService {
     }
   }
 
+  Future<List<Map<String, dynamic>>> getAllWorksByPublicationFilter(
+    PublicationFilter filter, {
+    int perPage = 200,
+  }) async {
+    try {
+      final allResults = <Map<String, dynamic>>[];
+      final seenIds = <String>{};
+      var cursor = '*';
+
+      while (cursor.isNotEmpty) {
+        final uri = OpenAlexQueryBuilder.buildWorksUri(
+          filter,
+          perPage: perPage.clamp(1, 200),
+          mailto: _mailto,
+          cursor: cursor,
+        );
+        final response = await _get(uri);
+
+        if (response.statusCode != 200) {
+          throw Exception('OpenAlex Works Cursor Error: ${response.statusCode}');
+        }
+
+        final data = json.decode(response.body);
+        final List results = data['results'] ?? [];
+        if (results.isEmpty) {
+          break;
+        }
+
+        for (final item in results) {
+          if (item is! Map<String, dynamic>) {
+            continue;
+          }
+
+          final id = item['id']?.toString() ?? '';
+          if (id.isEmpty || seenIds.add(id)) {
+            allResults.add(item);
+          }
+        }
+
+        final meta = data is Map ? data['meta'] : null;
+        final nextCursor = meta is Map ? meta['next_cursor']?.toString() : null;
+        if (nextCursor == null || nextCursor.isEmpty || nextCursor == cursor) {
+          break;
+        }
+        cursor = nextCursor;
+      }
+
+      return allResults;
+    } catch (e) {
+      throw Exception('Failed to fetch all filtered works list: $e');
+    }
+  }
+
   Future<Map<String, dynamic>> getWorksFiltered({
     String query = '',
     String? authorId,

@@ -73,6 +73,7 @@ class OpenAlexQueryBuilder {
     PublicationFilter filter, {
     int perPage = 50,
     String mailto = 'minhvtbd12345@fpt.edu.vn',
+    String? cursor,
   }) {
     final filters = <String>[];
 
@@ -110,6 +111,9 @@ class OpenAlexQueryBuilder {
     final sort = filter.openAlexSort;
     if (sort != null) {
       queryParameters['sort'] = sort;
+    }
+    if (cursor != null && cursor.isNotEmpty) {
+      queryParameters['cursor'] = cursor;
     }
 
     return Uri.https('api.openalex.org', '/works', queryParameters);

@@ -1,5 +1,6 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import '../../../core/utils/translation.dart';
 
 class PublicationTrendChart extends StatelessWidget {
   final Map<int, int> trendByYear;
@@ -9,7 +10,7 @@ class PublicationTrendChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (trendByYear.isEmpty) {
-      return const _EmptyChart(message: 'Không có dữ liệu publication theo năm.');
+      return _EmptyChart(message: 'no_publication_trend_data'.tr());
     }
 
     final entries = trendByYear.entries.toList();

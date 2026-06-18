@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/utils/translation.dart';
 
 /// Một Widget riêng quản lý thanh điều hướng dưới (Bottom Navigation Bar).
 /// Hiển thị các mục chức năng và tạo hiệu ứng gạch chân tô đậm (border under) khi được chọn.
@@ -51,9 +52,9 @@ class CustomBottomNavBar extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildNavItem(context, 0, Icons.home_rounded, 'Trang chủ'),
-              _buildNavItem(context, 1, Icons.search_rounded, 'Tìm kiếm'),
-              _buildNavItem(context, 2, Icons.insights_rounded, 'Research'),
+              _buildNavItem(context, 0, Icons.home_rounded, 'explore'.tr()),
+              _buildNavItem(context, 1, Icons.search_rounded, 'search'.tr()),
+              _buildNavItem(context, 2, Icons.insights_rounded, 'trend_analysis'.tr()),
             ],
           ),
         ),

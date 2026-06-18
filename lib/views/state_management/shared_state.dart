@@ -31,8 +31,16 @@ class SharedState {
   /// Mặc định là ThemeMode.light.
   static final ValueNotifier<ThemeMode> themeModeNotifier = ValueNotifier<ThemeMode>(ThemeMode.light);
 
+  /// Quản lý ngôn ngữ hoạt động toàn cục ('en' hoặc 'vi').
+  /// Mặc định là 'en' (tiếng Anh).
+  static final ValueNotifier<String> languageNotifier = ValueNotifier<String>('en');
+
   /// Quản lý Tab đang hoạt động toàn cục (0: Trang chủ, 1: Tìm kiếm, 2: Xu hướng, 3: Dashboard).
   static final ValueNotifier<int> activeTabNotifier = ValueNotifier<int>(0);
+
+  static void toggleLanguage() {
+    languageNotifier.value = languageNotifier.value == 'en' ? 'vi' : 'en';
+  }
 
   static void setKeyword(String keyword) {
     publicationFilterNotifier.value =
