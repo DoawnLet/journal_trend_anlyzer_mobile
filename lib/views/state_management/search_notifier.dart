@@ -22,6 +22,7 @@ class SearchState {
   final String? selectedTopicName;
   final String? sortBy;
   final PublicationFilter filter;
+  final int totalPublicationsCount;
 
   const SearchState({
     this.publications = const [],
@@ -37,6 +38,7 @@ class SearchState {
     this.selectedTopicName,
     this.sortBy,
     this.filter = PublicationFilter.empty,
+    this.totalPublicationsCount = 0,
   });
 
   SearchState copyWith({
@@ -53,6 +55,7 @@ class SearchState {
     String? selectedTopicName,
     String? sortBy,
     PublicationFilter? filter,
+    int? totalPublicationsCount,
     bool clearAuthor = false,
     bool clearConcept = false,
     bool clearTopic = false,
@@ -77,6 +80,7 @@ class SearchState {
           clearTopic ? null : (selectedTopicName ?? this.selectedTopicName),
       sortBy: clearSortBy ? null : (sortBy ?? this.sortBy),
       filter: filter ?? this.filter,
+      totalPublicationsCount: totalPublicationsCount ?? this.totalPublicationsCount,
     );
   }
 }
@@ -177,13 +181,16 @@ class SearchNotifier {
     try {
       final filter = _effectiveFilter();
       final List results;
+      int totalCount = 0;
       if (filter.fetchAllResults == true) {
         results = await _openAlexApiService.getAllWorksByPublicationFilter(
           filter,
         );
+        totalCount = results.length;
       } else {
         final data = await _openAlexApiService.getWorksByPublicationFilter(filter);
         results = data['results'] ?? [];
+        totalCount = data['meta']?['count'] ?? results.length;
       }
       final originalPublications =
           results.map((json) => Publication.fromJson(json)).toList();
@@ -192,12 +199,14 @@ class SearchNotifier {
 
       SharedState.setOriginalPublications(originalPublications);
       SharedState.setFilteredPublications(filteredPublications);
+      SharedState.setTotalPublicationsCount(totalCount);
 
       state = state.copyWith(
         publications: filteredPublications,
         originalPublications: originalPublications,
         isLoading: showLoading ? false : state.isLoading,
         filter: filter,
+        totalPublicationsCount: totalCount,
         searchQuery: filter.keyword,
         selectedAuthorName:
             filter.selectedAuthors.isEmpty ? null : filter.selectedAuthors.first,

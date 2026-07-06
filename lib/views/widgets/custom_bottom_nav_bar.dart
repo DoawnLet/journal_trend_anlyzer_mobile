@@ -52,9 +52,10 @@ class CustomBottomNavBar extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildNavItem(context, 0, Icons.home_rounded, 'explore'.tr()),
-              _buildNavItem(context, 1, Icons.search_rounded, 'search'.tr()),
-              _buildNavItem(context, 2, Icons.insights_rounded, 'trend_analysis'.tr()),
+              _buildNavItem(context, 0, Icons.dashboard_rounded, 'research_home'.tr()),
+              _buildNavItem(context, 1, Icons.menu_book_rounded, 'journals_tab'.tr()),
+              _buildNavItem(context, 2, Icons.tag_rounded, 'keywords_tab'.tr()),
+              _buildNavItem(context, 3, Icons.person_rounded, 'profile_tab'.tr()),
             ],
           ),
         ),

@@ -1,0 +1,11 @@
+---
+exclude_paths:
+  - "windows/flutter/generated_plugin_registrant.cc"
+  - "windows/flutter/generated_plugin_registrant.h"
+  - "linux/flutter/generated_plugin_registrant.cc"
+  - "linux/flutter/generated_plugin_registrant.h"
+  - "macos/Runner/GeneratedPluginRegistrant.swift"
+  - "macos/Runner/GeneratedPluginRegistrant.h"
+  - "macos/Runner/GeneratedPluginRegistrant.m"
+  - "ios/Runner/GeneratedPluginRegistrant.h"
+  - "ios/Runner/GeneratedPluginRegistrant.m"

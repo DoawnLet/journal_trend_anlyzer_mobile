@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class MetricCardGrid extends StatelessWidget {
   final List<MetricCardData> metrics;
@@ -16,9 +17,9 @@ class MetricCardGrid extends StatelessWidget {
           itemCount: metrics.length,
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: crossAxisCount,
-            crossAxisSpacing: 10,
-            mainAxisSpacing: 10,
-            childAspectRatio: crossAxisCount == 1 ? 3.3 : 1.55,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+            childAspectRatio: crossAxisCount == 1 ? 3.3 : 1.45,
           ),
           itemBuilder: (context, index) {
             final metric = metrics[index];
@@ -49,32 +50,68 @@ class _MetricCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.07),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withOpacity(0.12)),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.white.withOpacity(0.09),
+            Colors.white.withOpacity(0.03),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.12),
+          width: 1.0,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Icon(metric.icon, color: const Color(0xFF80CBC4), size: 22),
-          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: const Color(0xFF80CBC4).withOpacity(0.1),
+              border: Border.all(
+                color: const Color(0xFF80CBC4).withOpacity(0.2),
+                width: 1,
+              ),
+            ),
+            child: Icon(metric.icon, color: const Color(0xFF80CBC4), size: 18),
+          ),
+          const SizedBox(height: 6),
           Text(
             metric.value.isEmpty ? 'N/A' : metric.value,
-            style: theme.textTheme.titleMedium?.copyWith(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
+            style: GoogleFonts.outfit(
+              textStyle: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+              ),
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
           Text(
             metric.label,
-            style: theme.textTheme.bodySmall?.copyWith(color: Colors.white60),
+            style: GoogleFonts.inter(
+              textStyle: const TextStyle(
+                color: Colors.white60,
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
