@@ -96,7 +96,7 @@ class _ProfilePageState extends State<ProfilePage> {
         _exportedUrl = downloadUrl;
       });
 
-      if (mounted) {
+      if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: const Text('Báo cáo PDF đã được xuất và tải lên Firebase Storage thành công!'),
@@ -106,7 +106,7 @@ class _ProfilePageState extends State<ProfilePage> {
         );
       }
     } catch (e) {
-      if (mounted) {
+      if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Lỗi xuất báo cáo: $e'),
@@ -289,81 +289,111 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Widget _buildRemoteConfigCard(MockFirebaseService service, ThemeData theme) {
     return GlassCard(
+      borderRadius: 18,
+      color: Colors.white.withOpacity(0.06),
+      borderColor: const Color(0xFF4CAF50).withOpacity(0.35), // Green accent border
+      borderWidth: 1.0,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Icon(Icons.settings_suggest_rounded, color: Color(0xFF80CBC4)),
-              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(0xFF4CAF50).withOpacity(0.15),
+                ),
+                child: const Icon(Icons.settings_suggest_rounded, color: Color(0xFF4CAF50), size: 18),
+              ),
+              const SizedBox(width: 10),
               Text(
-                'Firebase Remote Config Demo',
-                style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: Colors.white),
+                'Firebase Remote Config',
+                style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 15),
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          const Text(
-            'Giả lập thay đổi cấu hình hiển thị danh sách từ xa của Firebase Console.',
-            style: TextStyle(color: Colors.white60, fontSize: 11),
+          const SizedBox(height: 10),
+          Text(
+            'Giả lập cấu hình hiển thị danh sách từ xa của Firebase Console.',
+            style: GoogleFonts.inter(color: Colors.white60, fontSize: 11),
           ),
-          const SizedBox(height: 16),
-          // Điều chỉnh giới hạn tạp chí tối đa
-          Row(
+          const SizedBox(height: 20),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Tạp chí tối đa hiển thị: ${service.maxJournalsDisplayed}',
-                      style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold),
-                    ),
-                    Slider(
-                      value: service.maxJournalsDisplayed.toDouble(),
-                      min: 1,
-                      max: 20,
-                      divisions: 19,
-                      activeColor: const Color(0xFF80CBC4),
-                      inactiveColor: Colors.white12,
-                      onChanged: (val) {
-                        service.updateRemoteConfig(
-                          maxJournals: val.toInt(),
-                          maxKeywords: service.maxKeywordsDisplayed,
-                        );
-                      },
-                    ),
-                  ],
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Tạp chí tối đa hiển thị:',
+                    style: GoogleFonts.inter(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w600),
+                  ),
+                  Text(
+                    '${service.maxJournalsDisplayed}',
+                    style: GoogleFonts.outfit(color: const Color(0xFF4CAF50), fontSize: 14, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+              SliderTheme(
+                data: SliderTheme.of(context).copyWith(
+                  activeTrackColor: const Color(0xFF4CAF50),
+                  inactiveTrackColor: Colors.white12,
+                  thumbColor: const Color(0xFF4CAF50),
+                  overlayColor: const Color(0xFF4CAF50).withOpacity(0.12),
+                  trackHeight: 3,
+                ),
+                child: Slider(
+                  value: service.maxJournalsDisplayed.toDouble(),
+                  min: 1,
+                  max: 20,
+                  divisions: 19,
+                  onChanged: (val) {
+                    service.updateRemoteConfig(
+                      maxJournals: val.toInt(),
+                      maxKeywords: service.maxKeywordsDisplayed,
+                    );
+                  },
                 ),
               ),
             ],
           ),
-          // Điều chỉnh giới hạn từ khóa tối đa
-          Row(
+          const SizedBox(height: 10),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Từ khóa tối đa hiển thị: ${service.maxKeywordsDisplayed}',
-                      style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold),
-                    ),
-                    Slider(
-                      value: service.maxKeywordsDisplayed.toDouble(),
-                      min: 2,
-                      max: 30,
-                      divisions: 28,
-                      activeColor: const Color(0xFF80CBC4),
-                      inactiveColor: Colors.white12,
-                      onChanged: (val) {
-                        service.updateRemoteConfig(
-                          maxJournals: service.maxJournalsDisplayed,
-                          maxKeywords: val.toInt(),
-                        );
-                      },
-                    ),
-                  ],
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Từ khóa tối đa hiển thị:',
+                    style: GoogleFonts.inter(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w600),
+                  ),
+                  Text(
+                    '${service.maxKeywordsDisplayed}',
+                    style: GoogleFonts.outfit(color: const Color(0xFF4CAF50), fontSize: 14, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+              SliderTheme(
+                data: SliderTheme.of(context).copyWith(
+                  activeTrackColor: const Color(0xFF4CAF50),
+                  inactiveTrackColor: Colors.white12,
+                  thumbColor: const Color(0xFF4CAF50),
+                  overlayColor: const Color(0xFF4CAF50).withOpacity(0.12),
+                  trackHeight: 3,
+                ),
+                child: Slider(
+                  value: service.maxKeywordsDisplayed.toDouble(),
+                  min: 2,
+                  max: 30,
+                  divisions: 28,
+                  onChanged: (val) {
+                    service.updateRemoteConfig(
+                      maxJournals: service.maxJournalsDisplayed,
+                      maxKeywords: val.toInt(),
+                    );
+                  },
                 ),
               ),
             ],
@@ -375,65 +405,112 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Widget _buildExportReportCard(MockFirebaseService service, ThemeData theme) {
     return GlassCard(
+      borderRadius: 18,
+      color: Colors.white.withOpacity(0.06),
+      borderColor: const Color(0xFF2196F3).withOpacity(0.35), // Blue accent border
+      borderWidth: 1.0,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Icon(Icons.cloud_upload_rounded, color: Color(0xFF80CBC4)),
-              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(0xFF2196F3).withOpacity(0.15),
+                ),
+                child: const Icon(Icons.cloud_upload_rounded, color: Color(0xFF2196F3), size: 18),
+              ),
+              const SizedBox(width: 10),
               Text(
-                'Firebase Storage Report Exporter',
-                style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: Colors.white),
+                'Firebase Storage',
+                style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 15),
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          const Text(
+          const SizedBox(height: 10),
+          Text(
             'Tải dữ liệu phân tích đề tài hiện tại về máy dạng PDF và lưu trữ trên Firebase Cloud Storage.',
-            style: TextStyle(color: Colors.white60, fontSize: 11),
+            style: GoogleFonts.inter(color: Colors.white60, fontSize: 11),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
           if (_isExporting)
             const Center(
-              child: Column(
-                children: [
-                  CircularProgressIndicator(color: Color(0xFF80CBC4)),
-                  SizedBox(height: 8),
-                  Text('Đang tạo báo cáo & tải lên Firebase Storage...', style: TextStyle(color: Colors.white70, fontSize: 12)),
-                ],
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 8.0),
+                child: Column(
+                  children: [
+                    SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(color: Color(0xFF2196F3), strokeWidth: 2.5),
+                    ),
+                    SizedBox(height: 12),
+                    Text('Đang tạo báo cáo & tải lên...', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                  ],
+                ),
               ),
             )
           else ...[
-            ElevatedButton.icon(
-              onPressed: () => _exportPdfReport(context),
-              icon: const Icon(Icons.picture_as_pdf_rounded),
-              label: const Text('Xuất báo cáo PDF'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF80CBC4),
-                foregroundColor: AppColors.primaryText,
-                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () => _exportPdfReport(context),
+                icon: const Icon(Icons.picture_as_pdf_rounded, size: 16),
+                label: const Text('Xuất báo cáo PDF'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF2196F3),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  elevation: 2,
+                ),
               ),
             ),
             if (_exportedUrl != null) ...[
               const SizedBox(height: 16),
-              const Text(
-                'Đường dẫn tệp báo cáo đã tải lên:',
-                style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold),
+              Row(
+                children: [
+                  const Icon(Icons.check_circle_rounded, color: Colors.greenAccent, size: 14),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Đã tải lên thành công:',
+                    style: GoogleFonts.inter(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold),
+                  ),
+                ],
               ),
               const SizedBox(height: 6),
-              GestureDetector(
+              InkWell(
                 onTap: () => _openDownloadUrl(_exportedUrl!),
-                child: Text(
-                  _exportedUrl!,
-                  style: const TextStyle(
-                    color: Colors.cyanAccent,
-                    fontSize: 12,
-                    decoration: TextDecoration.underline,
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.04),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.white.withOpacity(0.08)),
                   ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+                  child: Row(
+                    children: [
+                      const Icon(Icons.open_in_new_rounded, color: Colors.cyanAccent, size: 14),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _exportedUrl!,
+                          style: GoogleFonts.inter(
+                            textStyle: const TextStyle(
+                              color: Colors.cyanAccent,
+                              fontSize: 11,
+                              decoration: TextDecoration.underline,
+                            ),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -445,25 +522,36 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Widget _buildCrashlyticsCard(MockFirebaseService service, ThemeData theme) {
     return GlassCard(
+      borderRadius: 18,
+      color: Colors.white.withOpacity(0.06),
+      borderColor: const Color(0xFFE53935).withOpacity(0.35), // Red accent border
+      borderWidth: 1.0,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Icon(Icons.bug_report_rounded, color: Colors.redAccent),
-              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(0xFFE53935).withOpacity(0.15),
+                ),
+                child: const Icon(Icons.bug_report_rounded, color: Color(0xFFE53935), size: 18),
+              ),
+              const SizedBox(width: 10),
               Text(
-                'Firebase Crashlytics Demo',
-                style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: Colors.white),
+                'Firebase Crashlytics',
+                style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 15),
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          const Text(
-            'Mô phỏng ghi nhận lỗi ngoại lệ không đồng bộ hoặc kích hoạt sập ứng dụng để kiểm thử báo cáo Crashlytics.',
-            style: TextStyle(color: Colors.white60, fontSize: 11),
+          const SizedBox(height: 10),
+          Text(
+            'Mô phỏng lỗi ngoại lệ không đồng bộ hoặc kích hoạt sập ứng dụng để kiểm thử báo cáo sập tự động.',
+            style: GoogleFonts.inter(color: Colors.white60, fontSize: 11),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
           Row(
             children: [
               Expanded(
@@ -475,7 +563,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       service.logHandledException(e, stack);
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: const Text('Đã ghi nhận Exception thành công lên Crashlytics!'),
+                          content: const Text('Đã gửi báo cáo lỗi handled thành công!'),
                           backgroundColor: AppColors.success,
                           behavior: SnackBarBehavior.floating,
                         ),
@@ -485,33 +573,41 @@ class _ProfilePageState extends State<ProfilePage> {
                   style: OutlinedButton.styleFrom(
                     foregroundColor: Colors.white70,
                     side: const BorderSide(color: Colors.white30),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
-                  child: const Text('Handled Exception', style: TextStyle(fontSize: 12)),
+                  child: Text('Handled Exception', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600)),
                 ),
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: ElevatedButton(
                   onPressed: () {
-                    // Trigger test crash
                     service.triggerTestCrash();
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.redAccent.withOpacity(0.8),
+                    backgroundColor: const Color(0xFFE53935),
                     foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    elevation: 2,
                   ),
-                  child: const Text('Trigger Test Crash', style: TextStyle(fontSize: 12)),
+                  child: Text('Trigger Test Crash', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold)),
                 ),
               ),
             ],
           ),
           if (service.loggedExceptions.isNotEmpty) ...[
             const SizedBox(height: 12),
-            Text(
-              'Số ngoại lệ đã bắt đầu ghi nhận: ${service.loggedExceptions.length}',
-              style: const TextStyle(color: Colors.white60, fontSize: 11, fontStyle: FontStyle.italic),
+            Row(
+              children: [
+                const Icon(Icons.check_circle_outline, color: Colors.redAccent, size: 12),
+                const SizedBox(width: 6),
+                Text(
+                  'Số lỗi đã được ghi nhận: ${service.loggedExceptions.length}',
+                  style: GoogleFonts.inter(color: Colors.white54, fontSize: 11, fontStyle: FontStyle.italic),
+                ),
+              ],
             ),
           ],
         ],
@@ -521,6 +617,10 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Widget _buildNotificationCenterCard(MockFirebaseService service, ThemeData theme) {
     return GlassCard(
+      borderRadius: 18,
+      color: Colors.white.withOpacity(0.06),
+      borderColor: const Color(0xFFFF9800).withOpacity(0.35), // Orange accent border
+      borderWidth: 1.0,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -529,32 +629,45 @@ class _ProfilePageState extends State<ProfilePage> {
             children: [
               Row(
                 children: [
-                  const Icon(Icons.notifications_active_rounded, color: Color(0xFF80CBC4)),
-                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: const Color(0xFFFF9800).withOpacity(0.15),
+                    ),
+                    child: const Icon(Icons.notifications_active_rounded, color: Color(0xFFFF9800), size: 18),
+                  ),
+                  const SizedBox(width: 10),
                   Text(
                     'Notification Center (FCM)',
-                    style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: Colors.white),
+                    style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 15),
                   ),
                 ],
               ),
               IconButton(
-                icon: const Icon(Icons.add_alert_rounded, color: Color(0xFF80CBC4), size: 20),
+                icon: const Icon(Icons.add_alert_rounded, color: Color(0xFFFF9800), size: 20),
                 tooltip: 'Mô phỏng thông báo mới',
                 onPressed: _simulatePushNotification,
               ),
             ],
           ),
-          const SizedBox(height: 4),
-          const Text(
+          const SizedBox(height: 6),
+          Text(
             'Trung tâm hiển thị thông báo đẩy được gửi trực tuyến thông qua Firebase Cloud Messaging.',
-            style: TextStyle(color: Colors.white60, fontSize: 11),
+            style: GoogleFonts.inter(color: Colors.white60, fontSize: 11),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           if (service.notifications.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 20.0),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 24.0),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.02),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.white.withOpacity(0.04)),
+              ),
               child: Center(
-                child: Text('Không có thông báo nào.', style: TextStyle(color: Colors.white30, fontSize: 13)),
+                child: Text('Không có thông báo nào.', style: GoogleFonts.inter(color: Colors.white30, fontSize: 13)),
               ),
             )
           else
@@ -565,12 +678,12 @@ class _ProfilePageState extends State<ProfilePage> {
               itemBuilder: (context, index) {
                 final notif = service.notifications[index];
                 return Container(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  padding: const EdgeInsets.all(10),
+                  margin: const EdgeInsets.only(bottom: 10),
+                  padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.04),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.white.withOpacity(0.05)),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.white.withOpacity(0.06)),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -581,19 +694,26 @@ class _ProfilePageState extends State<ProfilePage> {
                           Expanded(
                             child: Text(
                               notif.title,
-                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+                              style: GoogleFonts.outfit(
+                                textStyle: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                              ),
                             ),
                           ),
+                          const SizedBox(width: 8),
                           Text(
-                            '${notif.timestamp.hour}:${notif.timestamp.minute.toString().padLeft(2, '0')}',
-                            style: const TextStyle(color: Colors.white30, fontSize: 10),
+                            '${notif.timestamp.hour.toString().padLeft(2, '0')}:${notif.timestamp.minute.toString().padLeft(2, '0')}',
+                            style: GoogleFonts.inter(
+                              textStyle: const TextStyle(color: Colors.white38, fontSize: 10, fontWeight: FontWeight.w600),
+                            ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 6),
                       Text(
                         notif.body,
-                        style: const TextStyle(color: Colors.white60, fontSize: 11),
+                        style: GoogleFonts.inter(
+                          textStyle: const TextStyle(color: Colors.white60, fontSize: 11, height: 1.4),
+                        ),
                       ),
                     ],
                   ),
@@ -607,45 +727,59 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Widget _buildAnalyticsLogsCard(MockFirebaseService service, ThemeData theme) {
     return GlassCard(
-      borderColor: const Color(0xFF80CBC4).withOpacity(0.2),
-      color: Colors.black.withOpacity(0.12),
+      borderRadius: 18,
+      borderColor: const Color(0xFF00E676).withOpacity(0.25),
+      color: Colors.black.withOpacity(0.35),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Icon(Icons.analytics_rounded, color: Color(0xFF80CBC4)),
-              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(0xFF00E676).withOpacity(0.12),
+                ),
+                child: const Icon(Icons.analytics_rounded, color: Color(0xFF00E676), size: 18),
+              ),
+              const SizedBox(width: 10),
               Text(
-                'Debug Analytics Logs (Báo cáo Minh Chứng)',
+                'Debug Analytics Logs (Terminal)',
                 style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 14),
               ),
             ],
           ),
-          const SizedBox(height: 6),
-          const Text(
-            'Đây là bảng hiển thị các sự kiện đã gửi lên Firebase Analytics dùng để chụp ảnh minh chứng cho dự án của bạn.',
-            style: TextStyle(color: Colors.white60, fontSize: 11),
+          const SizedBox(height: 8),
+          Text(
+            'Nhật ký các sự kiện thời gian thực đã gửi lên Firebase Analytics (dùng làm minh chứng dự án).',
+            style: GoogleFonts.inter(color: Colors.white60, fontSize: 11),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           Container(
-            height: 200,
+            height: 180,
             decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(8),
+              color: const Color(0xFF0A0F1D),
+              borderRadius: BorderRadius.circular(10),
               border: Border.all(color: Colors.white.withOpacity(0.08)),
             ),
             child: service.loggedEvents.isEmpty
-                ? const Center(
-                    child: Text('Chưa có sự kiện nào được ghi nhận.', style: TextStyle(color: Colors.white24, fontSize: 12)),
+                ? Center(
+                    child: Text(
+                      '// Waiting for events...',
+                      style: GoogleFonts.spaceMono(
+                        textStyle: const TextStyle(color: Colors.white24, fontSize: 12),
+                      ),
+                    ),
                   )
                 : ListView.builder(
-                    padding: const EdgeInsets.all(8),
+                    padding: const EdgeInsets.all(10),
                     itemCount: service.loggedEvents.length,
                     itemBuilder: (context, index) {
                       final event = service.loggedEvents[index];
+                      final timeStr = '${event.timestamp.hour.toString().padLeft(2, '0')}:${event.timestamp.minute.toString().padLeft(2, '0')}:${event.timestamp.second.toString().padLeft(2, '0')}';
                       return Padding(
-                        padding: const EdgeInsets.only(bottom: 10.0),
+                        padding: const EdgeInsets.only(bottom: 12.0),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -653,21 +787,28 @@ class _ProfilePageState extends State<ProfilePage> {
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Text(
-                                  'Event: ${event.name}',
-                                  style: const TextStyle(color: Color(0xFF80CBC4), fontWeight: FontWeight.bold, fontSize: 12),
+                                  '> Event: ${event.name}',
+                                  style: GoogleFonts.spaceMono(
+                                    textStyle: const TextStyle(color: Color(0xFF00E676), fontWeight: FontWeight.bold, fontSize: 11),
+                                  ),
                                 ),
                                 Text(
-                                  '${event.timestamp.hour}:${event.timestamp.minute.toString().padLeft(2, '0')}:${event.timestamp.second.toString().padLeft(2, '0')}',
-                                  style: const TextStyle(color: Colors.white38, fontSize: 10),
+                                  timeStr,
+                                  style: GoogleFonts.spaceMono(
+                                    textStyle: const TextStyle(color: Colors.white30, fontSize: 10),
+                                  ),
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 2),
+                            const SizedBox(height: 4),
                             Text(
-                              'Params: ${event.parameters.toString()}',
-                              style: const TextStyle(color: Colors.white70, fontSize: 11, fontFamily: 'monospace'),
+                              '  params: ${event.parameters.toString()}',
+                              style: GoogleFonts.spaceMono(
+                                textStyle: const TextStyle(color: Colors.white70, fontSize: 10),
+                              ),
                             ),
-                            const Divider(color: Colors.white10),
+                            const SizedBox(height: 8),
+                            Container(height: 1, color: Colors.white10),
                           ],
                         ),
                       );

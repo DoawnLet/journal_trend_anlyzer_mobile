@@ -99,7 +99,12 @@ class _KeywordsPageState extends State<KeywordsPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // Tiêu đề số liệu từ khóa
-                      _buildHeaderStats(allStats.length, publications.length),
+                      _buildHeaderStats(
+                        allStats.length,
+                        SharedState.totalPublicationsCountNotifier.value > 0
+                            ? SharedState.totalPublicationsCountNotifier.value
+                            : publications.length,
+                      ),
                       const SizedBox(height: 24),
 
                       // Biểu đồ tần suất Từ khóa
@@ -152,31 +157,78 @@ class _KeywordsPageState extends State<KeywordsPage> {
   }
 
   Widget _buildHeaderStats(int totalKeywords, int totalPubs) {
-    return GlassCard(
+    return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.white.withOpacity(0.09),
+            Colors.white.withOpacity(0.03),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withOpacity(0.12)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          Column(
-            children: [
-              Text(
-                totalKeywords.toString(),
-                style: const TextStyle(color: Color(0xFF80CBC4), fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 4),
-              const Text('Tổng số từ khóa', style: TextStyle(color: Colors.white70, fontSize: 11)),
-            ],
+          Expanded(
+            child: Column(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: const Color(0xFF80CBC4).withOpacity(0.1),
+                    border: Border.all(color: const Color(0xFF80CBC4).withOpacity(0.2)),
+                  ),
+                  child: const Icon(Icons.tag_rounded, color: Color(0xFF80CBC4), size: 18),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  totalKeywords.toString(),
+                  style: GoogleFonts.outfit(
+                    textStyle: const TextStyle(color: Color(0xFF80CBC4), fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                const Text('Tổng số từ khóa', style: TextStyle(color: Colors.white60, fontSize: 11)),
+              ],
+            ),
           ),
-          Container(width: 1, height: 30, color: Colors.white24),
-          Column(
-            children: [
-              Text(
-                totalPubs.toString(),
-                style: const TextStyle(color: Color(0xFF80CBC4), fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 4),
-              const Text('Tổng số bài báo', style: TextStyle(color: Colors.white70, fontSize: 11)),
-            ],
+          Container(width: 1, height: 40, color: Colors.white12),
+          Expanded(
+            child: Column(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: const Color(0xFF80CBC4).withOpacity(0.1),
+                    border: Border.all(color: const Color(0xFF80CBC4).withOpacity(0.2)),
+                  ),
+                  child: const Icon(Icons.book_rounded, color: Color(0xFF80CBC4), size: 18),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  totalPubs.toString(),
+                  style: GoogleFonts.outfit(
+                    textStyle: const TextStyle(color: Color(0xFF80CBC4), fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                const Text('Tổng số bài báo', style: TextStyle(color: Colors.white60, fontSize: 11)),
+              ],
+            ),
           ),
         ],
       ),
@@ -189,13 +241,43 @@ class _KeywordsPageState extends State<KeywordsPage> {
     final maxVal = topList.first.count.toDouble();
 
     return GlassCard(
+      borderRadius: 16,
+      color: Colors.white.withOpacity(0.06),
+      borderColor: Colors.white.withOpacity(0.12),
+      borderWidth: 1.0,
       child: SizedBox(
         height: 180,
         child: BarChart(
           BarChartData(
             alignment: BarChartAlignment.spaceAround,
             maxY: maxVal == 0 ? 1.0 : maxVal * 1.2,
-            barTouchData: BarTouchData(enabled: true),
+            barTouchData: BarTouchData(
+              touchTooltipData: BarTouchTooltipData(
+                getTooltipColor: (group) => const Color(0xFF0F364A).withOpacity(0.9),
+                tooltipBorder: BorderSide(color: Colors.white.withOpacity(0.15), width: 1.0),
+                tooltipBorderRadius: BorderRadius.circular(8),
+                getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                  return BarTooltipItem(
+                    '${topList[groupIndex].keyword}\n',
+                    GoogleFonts.outfit(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                    children: <TextSpan>[
+                      TextSpan(
+                        text: '${rod.toY.toInt()} ${'articles'.tr()}',
+                        style: GoogleFonts.inter(
+                          color: const Color(0xFF80CBC4),
+                          fontWeight: FontWeight.w600,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ),
             gridData: FlGridData(
               show: true,
               getDrawingHorizontalLine: (_) => FlLine(
@@ -244,9 +326,16 @@ class _KeywordsPageState extends State<KeywordsPage> {
                 barRods: [
                   BarChartRodData(
                     toY: topList[i].count.toDouble(),
-                    width: 14,
-                    color: const Color(0xFF80CBC4),
-                    borderRadius: BorderRadius.circular(4),
+                    width: 12,
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+                    gradient: const LinearGradient(
+                      begin: Alignment.bottomCenter,
+                      end: Alignment.topCenter,
+                      colors: [
+                        Color(0xFF00ACC1),
+                        Color(0xFF80CBC4),
+                      ],
+                    ),
                   ),
                 ],
               );
@@ -264,6 +353,7 @@ class _KeywordsPageState extends State<KeywordsPage> {
     int totalCount, {
     bool isTrending = false,
   }) {
+    final accentColor = isTrending ? const Color(0xFFFFB300) : const Color(0xFF80CBC4);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -273,51 +363,84 @@ class _KeywordsPageState extends State<KeywordsPage> {
             Text(
               title,
               style: GoogleFonts.outfit(
-                fontSize: 15,
+                fontSize: 16,
                 fontWeight: FontWeight.bold,
-                color: isTrending ? const Color(0xFF80CBC4) : Colors.white,
+                color: isTrending ? const Color(0xFFFFB300) : Colors.white,
               ),
             ),
             if (!isTrending)
               Text(
                 'Remote Config: $limit',
-                style: const TextStyle(color: Colors.white30, fontSize: 10),
+                style: GoogleFonts.inter(
+                  textStyle: const TextStyle(color: Colors.white30, fontSize: 10, fontWeight: FontWeight.bold),
+                ),
               ),
           ],
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 12),
         Wrap(
-          spacing: 8,
-          runSpacing: 8,
+          spacing: 10,
+          runSpacing: 10,
           children: list.map((item) {
-            return ActionChip(
-              avatar: Icon(
-                isTrending ? Icons.trending_up_rounded : Icons.label_rounded,
-                size: 14,
-                color: isTrending ? Colors.amber : const Color(0xFF80CBC4),
-              ),
-              label: Text('${item.keyword} (${item.count})'),
-              backgroundColor: Colors.white.withOpacity(0.06),
-              labelStyle: const TextStyle(color: Colors.white, fontSize: 13),
-              shape: RoundedRectangleBorder(
+            return Material(
+              color: Colors.transparent,
+              child: InkWell(
                 borderRadius: BorderRadius.circular(16),
-                side: BorderSide(color: Colors.white.withOpacity(0.12)),
-              ),
-              onPressed: () {
-                // Ghi nhận sự kiện xem từ khóa
-                MockFirebaseService.instance.logAnalyticsEvent(
-                  name: 'view_keyword',
-                  parameters: {'keyword': item.keyword},
-                );
+                onTap: () {
+                  // Ghi nhận sự kiện xem từ khóa
+                  MockFirebaseService.instance.logAnalyticsEvent(
+                    name: 'view_keyword',
+                    parameters: {'keyword': item.keyword},
+                  );
 
-                // Điều hướng sang chi tiết từ khóa
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => KeywordDetailPage(keywordStats: item),
+                  // Điều hướng sang chi tiết từ khóa
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => KeywordDetailPage(keywordStats: item),
+                    ),
+                  );
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.06),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: accentColor.withOpacity(0.25),
+                      width: 1,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.04),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
                   ),
-                );
-              },
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        isTrending ? Icons.trending_up_rounded : Icons.label_rounded,
+                        size: 14,
+                        color: accentColor,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        '${item.keyword} (${item.count})',
+                        style: GoogleFonts.inter(
+                          textStyle: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             );
           }).toList(),
         ),

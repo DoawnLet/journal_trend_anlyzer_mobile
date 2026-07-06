@@ -177,20 +177,43 @@ class _JournalsPageState extends State<JournalsPage> {
     return Row(
       children: [
         Expanded(
-          child: GlassCard(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Colors.white.withOpacity(0.09),
+                  Colors.white.withOpacity(0.03),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.white.withOpacity(0.12)),
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(Icons.menu_book_rounded, color: Color(0xFF80CBC4), size: 20),
-                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: const Color(0xFF80CBC4).withOpacity(0.1),
+                    border: Border.all(color: const Color(0xFF80CBC4).withOpacity(0.2)),
+                  ),
+                  child: const Icon(Icons.menu_book_rounded, color: Color(0xFF80CBC4), size: 18),
+                ),
+                const SizedBox(height: 10),
                 Text(
                   totalJournals.toString(),
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+                  style: GoogleFonts.outfit(
+                    textStyle: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+                  ),
                 ),
+                const SizedBox(height: 2),
                 const Text(
                   'Tổng số tạp chí',
-                  style: TextStyle(color: Colors.white60, fontSize: 11),
+                  style: TextStyle(color: Colors.white60, fontSize: 11, fontWeight: FontWeight.w500),
                 ),
               ],
             ),
@@ -198,20 +221,43 @@ class _JournalsPageState extends State<JournalsPage> {
         ),
         const SizedBox(width: 12),
         Expanded(
-          child: GlassCard(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Colors.white.withOpacity(0.09),
+                  Colors.white.withOpacity(0.03),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.white.withOpacity(0.12)),
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(Icons.assessment_rounded, color: Color(0xFF80CBC4), size: 20),
-                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: const Color(0xFF80CBC4).withOpacity(0.1),
+                    border: Border.all(color: const Color(0xFF80CBC4).withOpacity(0.2)),
+                  ),
+                  child: const Icon(Icons.assessment_rounded, color: Color(0xFF80CBC4), size: 18),
+                ),
+                const SizedBox(height: 10),
                 Text(
                   avgArticles.toStringAsFixed(1),
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+                  style: GoogleFonts.outfit(
+                    textStyle: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+                  ),
                 ),
+                const SizedBox(height: 2),
                 const Text(
                   'Bài viết TB / Tạp chí',
-                  style: TextStyle(color: Colors.white60, fontSize: 11),
+                  style: TextStyle(color: Colors.white60, fontSize: 11, fontWeight: FontWeight.w500),
                 ),
               ],
             ),
@@ -227,13 +273,43 @@ class _JournalsPageState extends State<JournalsPage> {
     final maxVal = list.first.count.toDouble();
 
     return GlassCard(
+      borderRadius: 16,
+      color: Colors.white.withOpacity(0.06),
+      borderColor: Colors.white.withOpacity(0.12),
+      borderWidth: 1.0,
       child: SizedBox(
         height: 180,
         child: BarChart(
           BarChartData(
             alignment: BarChartAlignment.spaceAround,
             maxY: maxVal == 0 ? 1.0 : maxVal * 1.2,
-            barTouchData: BarTouchData(enabled: true),
+            barTouchData: BarTouchData(
+              touchTooltipData: BarTouchTooltipData(
+                getTooltipColor: (group) => const Color(0xFF0F364A).withOpacity(0.9),
+                tooltipBorder: BorderSide(color: Colors.white.withOpacity(0.15), width: 1.0),
+                tooltipBorderRadius: BorderRadius.circular(8),
+                getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                  return BarTooltipItem(
+                    '${list[groupIndex].name}\n',
+                    GoogleFonts.outfit(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                    children: <TextSpan>[
+                      TextSpan(
+                        text: '${rod.toY.toInt()} ${'articles'.tr()}',
+                        style: GoogleFonts.inter(
+                          color: const Color(0xFF80CBC4),
+                          fontWeight: FontWeight.w600,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ),
             gridData: FlGridData(
               show: true,
               getDrawingHorizontalLine: (_) => FlLine(
@@ -282,9 +358,16 @@ class _JournalsPageState extends State<JournalsPage> {
                 barRods: [
                   BarChartRodData(
                     toY: list[i].count.toDouble(),
-                    width: 14,
-                    color: const Color(0xFF80CBC4),
-                    borderRadius: BorderRadius.circular(4),
+                    width: 12,
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+                    gradient: const LinearGradient(
+                      begin: Alignment.bottomCenter,
+                      end: Alignment.topCenter,
+                      colors: [
+                        Color(0xFF00ACC1),
+                        Color(0xFF80CBC4),
+                      ],
+                    ),
                   ),
                 ],
               );
@@ -296,37 +379,60 @@ class _JournalsPageState extends State<JournalsPage> {
   }
 
   Widget _buildJournalItem(JournalStats journal, int rank) {
+    Color rankColor;
+    Color badgeBgColor;
+    switch (rank) {
+      case 1:
+        rankColor = const Color(0xFFFFD700); // Gold
+        badgeBgColor = const Color(0xFFFFD700).withOpacity(0.15);
+        break;
+      case 2:
+        rankColor = const Color(0xFFC0C0C0); // Silver
+        badgeBgColor = const Color(0xFFC0C0C0).withOpacity(0.15);
+        break;
+      case 3:
+        rankColor = const Color(0xFFCD7F32); // Bronze
+        badgeBgColor = const Color(0xFFCD7F32).withOpacity(0.15);
+        break;
+      default:
+        rankColor = const Color(0xFF80CBC4); // Teal
+        badgeBgColor = const Color(0xFF80CBC4).withOpacity(0.1);
+    }
+
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
+      margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withOpacity(0.1)),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
       ),
       child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
         leading: Container(
-          width: 32,
-          height: 32,
+          width: 36,
+          height: 36,
           decoration: BoxDecoration(
-            color: rank == 1
-                ? Colors.amber.withOpacity(0.2)
-                : const Color(0xFF80CBC4).withOpacity(0.15),
+            color: badgeBgColor,
             shape: BoxShape.circle,
+            border: Border.all(color: rankColor.withOpacity(0.3), width: 1),
           ),
           alignment: Alignment.center,
           child: Text(
             rank.toString(),
-            style: TextStyle(
-              color: rank == 1 ? Colors.amber : const Color(0xFF80CBC4),
-              fontWeight: FontWeight.bold,
-              fontSize: 14,
+            style: GoogleFonts.outfit(
+              textStyle: TextStyle(
+                color: rankColor,
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+              ),
             ),
           ),
         ),
         title: Text(
           journal.name,
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+          style: GoogleFonts.outfit(
+            textStyle: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+          ),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
@@ -334,7 +440,9 @@ class _JournalsPageState extends State<JournalsPage> {
           padding: const EdgeInsets.only(top: 4.0),
           child: Text(
             'Số bài báo: ${journal.count} bài • Số trích dẫn: ${journal.totalCitations}',
-            style: const TextStyle(color: Colors.white54, fontSize: 12),
+            style: GoogleFonts.inter(
+              textStyle: const TextStyle(color: Colors.white60, fontSize: 12),
+            ),
           ),
         ),
         trailing: const Icon(Icons.chevron_right_rounded, color: Colors.white70),

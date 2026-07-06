@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../core/utils/translation.dart';
 import '../../core/services/mock_firebase_service.dart';
 import '../widgets/glass_card.dart';
 import 'detail_page.dart';

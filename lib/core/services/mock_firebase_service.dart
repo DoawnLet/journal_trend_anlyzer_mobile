@@ -67,41 +67,45 @@ class MockFirebaseService extends ChangeNotifier {
     ]);
 
     // Lắng nghe thay đổi trạng thái xác thực từ Firebase thực tế để đồng bộ
-    FirebaseAuthService.instance.authStateChanges.listen((User? firebaseUser) {
-      final oldUser = _currentUser;
-      if (firebaseUser != null) {
-        _currentUser = MockFirebaseUser(
-          uid: firebaseUser.uid,
-          displayName: firebaseUser.displayName ?? 'Google User',
-          email: firebaseUser.email ?? '',
-          photoUrl: firebaseUser.photoURL ?? 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&h=150&q=80',
-        );
-        // Ghi nhận sự kiện Analytics nếu chuyển từ chưa đăng nhập sang đã đăng nhập
-        if (oldUser == null) {
-          logAnalyticsEvent(
-            name: 'login',
-            parameters: {
-              'method': 'google_sign_in',
-              'email': _currentUser!.email,
-              'uid': _currentUser!.uid,
-            },
+    try {
+      FirebaseAuthService.instance.authStateChanges.listen((User? firebaseUser) {
+        final oldUser = _currentUser;
+        if (firebaseUser != null) {
+          _currentUser = MockFirebaseUser(
+            uid: firebaseUser.uid,
+            displayName: firebaseUser.displayName ?? 'Google User',
+            email: firebaseUser.email ?? '',
+            photoUrl: firebaseUser.photoURL ?? 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&h=150&q=80',
           );
+          // Ghi nhận sự kiện Analytics nếu chuyển từ chưa đăng nhập sang đã đăng nhập
+          if (oldUser == null) {
+            logAnalyticsEvent(
+              name: 'login',
+              parameters: {
+                'method': 'google_sign_in',
+                'email': _currentUser!.email,
+                'uid': _currentUser!.uid,
+              },
+            );
+          }
+        } else {
+          _currentUser = null;
+          // Ghi nhận sự kiện Analytics nếu chuyển từ đã đăng nhập sang đăng xuất
+          if (oldUser != null) {
+            logAnalyticsEvent(
+              name: 'logout',
+              parameters: {
+                'email': oldUser.email,
+                'uid': oldUser.uid,
+              },
+            );
+          }
         }
-      } else {
-        _currentUser = null;
-        // Ghi nhận sự kiện Analytics nếu chuyển từ đã đăng nhập sang đăng xuất
-        if (oldUser != null) {
-          logAnalyticsEvent(
-            name: 'logout',
-            parameters: {
-              'email': oldUser.email,
-              'uid': oldUser.uid,
-            },
-          );
-        }
-      }
-      notifyListeners();
-    });
+        notifyListeners();
+      });
+    } catch (e) {
+      debugPrint('[MockFirebaseService] Real Firebase Auth listener failed (expected in tests): $e');
+    }
   }
   static final MockFirebaseService instance = MockFirebaseService._();
 

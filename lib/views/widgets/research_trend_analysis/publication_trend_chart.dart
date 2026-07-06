@@ -1,5 +1,6 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../../core/utils/translation.dart';
 
 class PublicationTrendChart extends StatelessWidget {
@@ -25,6 +26,33 @@ class PublicationTrendChart extends StatelessWidget {
         BarChartData(
           alignment: BarChartAlignment.spaceAround,
           maxY: maxY == 0 ? 1 : maxY * 1.2,
+          barTouchData: BarTouchData(
+            touchTooltipData: BarTouchTooltipData(
+              getTooltipColor: (group) => const Color(0xFF0F364A).withOpacity(0.9),
+              tooltipBorder: BorderSide(color: Colors.white.withOpacity(0.15), width: 1.0),
+              tooltipBorderRadius: BorderRadius.circular(8),
+              getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                return BarTooltipItem(
+                  '${entries[groupIndex].key}\n',
+                  GoogleFonts.outfit(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
+                  children: <TextSpan>[
+                    TextSpan(
+                      text: '${rod.toY.toInt()} ${'articles'.tr()}',
+                      style: GoogleFonts.inter(
+                        color: const Color(0xFF80CBC4),
+                        fontWeight: FontWeight.w600,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
           gridData: FlGridData(
             show: true,
             getDrawingHorizontalLine: (_) => FlLine(
@@ -95,9 +123,16 @@ class PublicationTrendChart extends StatelessWidget {
                 barRods: [
                   BarChartRodData(
                     toY: entries[index].value.toDouble(),
-                    width: 16,
-                    borderRadius: BorderRadius.circular(4),
-                    color: const Color(0xFF80CBC4),
+                    width: 14,
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(5)),
+                    gradient: const LinearGradient(
+                      begin: Alignment.bottomCenter,
+                      end: Alignment.topCenter,
+                      colors: [
+                        Color(0xFF00ACC1),
+                        Color(0xFF80CBC4),
+                      ],
+                    ),
                   ),
                 ],
               ),

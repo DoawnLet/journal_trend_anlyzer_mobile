@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../core/theme/app_colors.dart';
 import '../../core/utils/translation.dart';
 import '../../core/services/mock_firebase_service.dart';
 import '../models/publication_model.dart';
@@ -141,8 +140,11 @@ class _HomePageState extends State<HomePage> {
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: GlassCard(
-                padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
-                borderRadius: 16,
+                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 2.0),
+                borderRadius: 20,
+                color: Colors.white.withOpacity(0.08),
+                borderColor: Colors.white.withOpacity(0.15),
+                borderWidth: 1.0,
                 child: Row(
                   children: [
                     const Icon(Icons.search_rounded, color: Colors.white70),
@@ -205,12 +207,14 @@ class _HomePageState extends State<HomePage> {
                   }
 
                   // Tính toán các chỉ số thống kê từ danh sách bài viết nhận được
-                  final totalPubs = publications.length;
+                  final totalPubs = searchState.totalPublicationsCount > 0
+                      ? searchState.totalPublicationsCount
+                      : publications.length;
                   
                   final totalCitations = publications.fold<int>(
                     0, (sum, paper) => sum + paper.citationCount,
                   );
-                  final avgCitations = totalPubs == 0 ? 0.0 : totalCitations / totalPubs;
+                  final avgCitations = publications.isEmpty ? 0.0 : totalCitations / publications.length;
 
                   // Tính Peak Year
                   final yearCounts = <int, int>{};
@@ -453,33 +457,47 @@ class _HomePageState extends State<HomePage> {
         );
       },
       child: GlassCard(
-        borderColor: const Color(0xFF80CBC4).withOpacity(0.4),
+        borderRadius: 18,
+        color: const Color(0xFF163E3E).withOpacity(0.4),
+        borderColor: const Color(0xFFFFB300).withOpacity(0.45),
+        borderWidth: 1.2,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                const Icon(Icons.star_rounded, color: Colors.amber, size: 20),
-                const SizedBox(width: 6),
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.withOpacity(0.15),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.amber.withOpacity(0.3), width: 1),
+                  ),
+                  child: const Icon(Icons.star_rounded, color: Colors.amber, size: 16),
+                ),
+                const SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     'Đóng góp trích dẫn nhiều nhất (${paper.citationCount} trích dẫn)',
-                    style: const TextStyle(
+                    style: GoogleFonts.outfit(
                       color: Colors.amber,
                       fontWeight: FontWeight.bold,
                       fontSize: 12,
+                      letterSpacing: 0.3,
                     ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
             Text(
               paper.title,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 15,
+              style: GoogleFonts.outfit(
+                textStyle: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                ),
               ),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
@@ -487,25 +505,31 @@ class _HomePageState extends State<HomePage> {
             const SizedBox(height: 8),
             Text(
               paper.authors.join(', '),
-              style: const TextStyle(color: Colors.white70, fontSize: 13),
+              style: GoogleFonts.inter(
+                textStyle: const TextStyle(color: Colors.white70, fontSize: 13),
+              ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 8),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Expanded(
                   child: Text(
                     paper.journalName,
-                    style: const TextStyle(color: Colors.white54, fontSize: 12, fontStyle: FontStyle.italic),
+                    style: GoogleFonts.inter(
+                      textStyle: const TextStyle(color: Colors.white54, fontSize: 12, fontStyle: FontStyle.italic),
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 Text(
                   paper.publicationYear.toString(),
-                  style: const TextStyle(color: Color(0xFF80CBC4), fontSize: 12, fontWeight: FontWeight.bold),
+                  style: GoogleFonts.outfit(
+                    textStyle: const TextStyle(color: Color(0xFF80CBC4), fontSize: 12, fontWeight: FontWeight.bold),
+                  ),
                 ),
               ],
             ),
@@ -517,56 +541,86 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildPublicationItem(Publication paper, ThemeData theme) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
+      margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withOpacity(0.1)),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
       ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-        title: Text(
-          paper.title,
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-        ),
-        subtitle: Padding(
-          padding: const EdgeInsets.only(top: 4.0),
-          child: Text(
-            '${paper.authors.isNotEmpty ? paper.authors.first : "Unknown"} - ${paper.publicationYear} - ${paper.journalName}',
-            style: const TextStyle(color: Colors.white54, fontSize: 12),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-        trailing: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: BoxDecoration(
-            color: const Color(0xFF80CBC4).withOpacity(0.15),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Text(
-            '${paper.citationCount} 🌟',
-            style: const TextStyle(color: Color(0xFF80CBC4), fontSize: 12, fontWeight: FontWeight.bold),
-          ),
-        ),
-        onTap: () {
-          // Ghi nhận sự kiện xem bài báo
-          MockFirebaseService.instance.logAnalyticsEvent(
-            name: 'view_publication',
-            parameters: {
-              'publication_title': paper.title,
-              'publication_year': paper.publicationYear,
-            },
-          );
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(14),
+        child: IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Container(
+                width: 4,
+                color: const Color(0xFF80CBC4),
+              ),
+              Expanded(
+                child: ListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                  title: Text(
+                    paper.title,
+                    style: GoogleFonts.outfit(
+                      textStyle: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  subtitle: Padding(
+                    padding: const EdgeInsets.only(top: 6.0),
+                    child: Text(
+                      '${paper.authors.isNotEmpty ? paper.authors.first : "Unknown"} - ${paper.publicationYear} - ${paper.journalName}',
+                      style: GoogleFonts.inter(
+                        textStyle: const TextStyle(color: Colors.white60, fontSize: 12),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  trailing: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF80CBC4).withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFF80CBC4).withOpacity(0.2)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.star_rounded, color: Color(0xFF80CBC4), size: 14),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${paper.citationCount}',
+                          style: GoogleFonts.inter(
+                            textStyle: const TextStyle(color: Color(0xFF80CBC4), fontSize: 12, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  onTap: () {
+                    // Ghi nhận sự kiện xem bài báo
+                    MockFirebaseService.instance.logAnalyticsEvent(
+                      name: 'view_publication',
+                      parameters: {
+                        'publication_title': paper.title,
+                        'publication_year': paper.publicationYear,
+                      },
+                    );
 
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) => DetailPage(publication: paper),
-            ),
-          );
-        },
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => DetailPage(publication: paper),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

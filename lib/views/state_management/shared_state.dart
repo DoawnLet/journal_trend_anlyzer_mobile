@@ -27,6 +27,12 @@ class SharedState {
   static final ValueNotifier<List<Publication>> filteredPublicationsNotifier =
       ValueNotifier<List<Publication>>(const []);
 
+  static final ValueNotifier<int> totalPublicationsCountNotifier = ValueNotifier<int>(0);
+
+  static void setTotalPublicationsCount(int count) {
+    totalPublicationsCountNotifier.value = count;
+  }
+
   /// Quản lý chế độ giao diện sáng/tối (Light/Dark Mode).
   /// Mặc định là ThemeMode.light.
   static final ValueNotifier<ThemeMode> themeModeNotifier = ValueNotifier<ThemeMode>(ThemeMode.light);
@@ -118,6 +124,9 @@ class SharedState {
     );
     activeTaxonomyNotifier.value = ResearchTaxonomySelection.empty;
     activeQueryNotifier.value = keyword;
+    if (!keepKeyword) {
+      totalPublicationsCountNotifier.value = 0;
+    }
   }
 
   static void clearResearchTaxonomy() {
@@ -132,6 +141,7 @@ class SharedState {
     publicationFilterNotifier.value = PublicationFilter.empty;
     originalPublicationsNotifier.value = const [];
     filteredPublicationsNotifier.value = const [];
+    totalPublicationsCountNotifier.value = 0;
     activeResearchScopeNotifier.value = ResearchScope.empty;
     activeTaxonomyNotifier.value = ResearchTaxonomySelection.empty;
     activeQueryNotifier.value = '';
