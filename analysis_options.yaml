@@ -10,6 +10,8 @@
 include: package:flutter_lints/flutter.yaml
 
 analyzer:
+  exclude:
+    - patrol_tests/**
   errors:
     deprecated_member_use: ignore
 

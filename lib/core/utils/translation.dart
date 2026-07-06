@@ -13,12 +13,17 @@ class AppTranslation {
   static final Map<String, Map<String, String>> _translations = {
     'en': {
       // General Navigation
-      'research_home': 'Research Home',
+      'research_home': 'Overview',
       'explore': 'Explore',
       'search': 'Search',
       'trend_analysis': 'Trend',
       'dashboard': 'Dashboard',
       'language': 'Language',
+      'journals_tab': 'Journals',
+      'keywords_tab': 'Keywords',
+      'profile_tab': 'Profile',
+      'welcome_to_portal': 'Academic Research Portal',
+      'sign_in_desc': 'Sign in with your Google account to access publication statistics, manage reports, and test Firebase cloud services.',
       
       // Home Page
       'quick_search_hint': 'Quick search publications...',
@@ -279,12 +284,17 @@ class AppTranslation {
     },
     'vi': {
       // General Navigation
-      'research_home': 'Trang chủ',
+      'research_home': 'Tổng quan',
       'explore': 'Khám phá',
       'search': 'Tìm kiếm',
       'trend_analysis': 'Xu hướng',
       'dashboard': 'Dashboard',
       'language': 'Ngôn ngữ',
+      'journals_tab': 'Tạp chí',
+      'keywords_tab': 'Từ khóa',
+      'profile_tab': 'Cá nhân',
+      'welcome_to_portal': 'Cổng thông tin học thuật',
+      'sign_in_desc': 'Đăng nhập bằng tài khoản Google để xem thống kê xu hướng xuất bản, quản lý báo cáo và trải nghiệm dịch vụ đám mây Firebase.',
       
       // Home Page
       'quick_search_hint': 'Tìm kiếm nhanh bài viết...',

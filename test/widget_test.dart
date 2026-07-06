@@ -6,7 +6,8 @@ void main() {
     // Build our app and trigger a frame.
     await tester.pumpWidget(const MyApp());
 
-    // Verify that the App Bar contains the title of the home page
-    expect(find.text('Research Home'), findsOneWidget);
+    // Verify that the login screen is displayed on startup
+    expect(find.text('Journal Trend Analyzer'), findsOneWidget);
+    expect(find.text('Sign in with Google'), findsOneWidget);
   });
 }

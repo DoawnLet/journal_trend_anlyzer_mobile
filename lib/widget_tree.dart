@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'views/pages/home_page.dart';
-import 'views/pages/search_page.dart';
-import 'views/pages/research_trend_analysis_screen.dart';
+import 'views/pages/journals_page.dart';
+import 'views/pages/keywords_page.dart';
+import 'views/pages/profile_page.dart';
 import 'views/state_management/home_notifier.dart';
 import 'views/state_management/search_notifier.dart';
 import 'views/state_management/trend_notifier.dart';
@@ -34,7 +35,7 @@ class _WidgetTreeState extends State<WidgetTree> {
     
     // Đăng ký lắng nghe sự thay đổi của tab hoạt động toàn cục
     SharedState.activeTabNotifier.addListener(_onTabChanged);
-    _currentIndex = SharedState.activeTabNotifier.value.clamp(0, 2);
+    _currentIndex = SharedState.activeTabNotifier.value.clamp(0, 3);
   }
 
   @override
@@ -49,18 +50,19 @@ class _WidgetTreeState extends State<WidgetTree> {
   void _onTabChanged() {
     if (mounted) {
       setState(() {
-        _currentIndex = SharedState.activeTabNotifier.value.clamp(0, 2);
+        _currentIndex = SharedState.activeTabNotifier.value.clamp(0, 3);
       });
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // Danh sách các trang nghiệp vụ
+    // Danh sách các trang nghiệp vụ (4 Tab theo yêu cầu Lab 03)
     final List<Widget> pages = [
       HomePage(notifier: _homeNotifier, searchNotifier: _searchNotifier),
-      SearchPage(notifier: _searchNotifier),
-      ResearchTrendAnalysisScreen(notifier: _trendNotifier),
+      const JournalsPage(),
+      const KeywordsPage(),
+      const ProfilePage(),
     ];
 
     return Scaffold(
