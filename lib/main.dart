@@ -8,11 +8,16 @@ import 'views/pages/login_page.dart';
 import 'views/state_management/auth_notifier.dart';
 import 'views/state_management/shared_state.dart';
 import 'widget_tree.dart';
+import 'core/services/mock_firebase_service.dart';
 
 Future<void> main() async {
   // Đảm bảo Flutter framework được khởi tạo hoàn chỉnh trước khi load assets
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
+  
+  // Khởi tạo các dịch vụ Firebase thật (Storage, Remote Config, FCM, Crashlytics)
+  await MockFirebaseService.instance.initRealFirebase();
+
   // Khởi tạo hệ thống xử lý lỗi toàn cục thông qua Middleware
   ErrorMiddleware.init();
 

@@ -1,7 +1,13 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart' show User;
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:firebase_remote_config/firebase_remote_config.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
 import 'firebase_auth_service.dart';
+import '../../views/state_management/shared_state.dart';
 
 /// Lớp đại diện cho User mock của ứng dụng
 class MockFirebaseUser {
@@ -46,7 +52,7 @@ class MockAnalyticsEvent {
   });
 }
 
-/// Dịch vụ quản lý Mock Firebase tập trung toàn cục
+/// Dịch vụ quản lý Firebase tích hợp thực tế kết hợp mock dự phòng toàn cục
 class MockFirebaseService extends ChangeNotifier {
   // Singleton pattern
   MockFirebaseService._() {
@@ -77,7 +83,7 @@ class MockFirebaseService extends ChangeNotifier {
             email: firebaseUser.email ?? '',
             photoUrl: firebaseUser.photoURL ?? 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&h=150&q=80',
           );
-          // Ghi nhận sự kiện Analytics nếu chuyển từ chưa đăng nhập sang đã đăng nhập
+          // Ghi nhận sự kiện Analytics
           if (oldUser == null) {
             logAnalyticsEvent(
               name: 'login',
@@ -90,7 +96,7 @@ class MockFirebaseService extends ChangeNotifier {
           }
         } else {
           _currentUser = null;
-          // Ghi nhận sự kiện Analytics nếu chuyển từ đã đăng nhập sang đăng xuất
+          // Ghi nhận sự kiện Analytics
           if (oldUser != null) {
             logAnalyticsEvent(
               name: 'logout',
@@ -104,10 +110,84 @@ class MockFirebaseService extends ChangeNotifier {
         notifyListeners();
       });
     } catch (e) {
-      debugPrint('[MockFirebaseService] Real Firebase Auth listener failed (expected in tests): $e');
+      debugPrint('[MockFirebaseService] Real Firebase Auth listener failed: $e');
     }
   }
+
   static final MockFirebaseService instance = MockFirebaseService._();
+
+  /// Khởi tạo các dịch vụ Firebase thực tế trên Android/iOS
+  Future<void> initRealFirebase() async {
+    if (!kIsWeb && (defaultTargetPlatform == TargetPlatform.iOS || defaultTargetPlatform == TargetPlatform.android)) {
+      try {
+        // 1. Cấu hình Remote Config thực tế
+        final remoteConfig = FirebaseRemoteConfig.instance;
+        await remoteConfig.setDefaults(<String, dynamic>{
+          'max_journals_displayed': 5,
+          'max_keywords_displayed': 10,
+        });
+        await remoteConfig.setConfigSettings(RemoteConfigSettings(
+          fetchTimeout: const Duration(minutes: 1),
+          minimumFetchInterval: const Duration(minutes: 5), // Tải nhanh khi test
+        ));
+        await remoteConfig.fetchAndActivate();
+        _maxJournalsDisplayed = remoteConfig.getInt('max_journals_displayed');
+        _maxKeywordsDisplayed = remoteConfig.getInt('max_keywords_displayed');
+
+        // Lắng nghe thay đổi cấu hình thời gian thực từ Console
+        remoteConfig.onConfigUpdated.listen((event) async {
+          await remoteConfig.activate();
+          _maxJournalsDisplayed = remoteConfig.getInt('max_journals_displayed');
+          _maxKeywordsDisplayed = remoteConfig.getInt('max_keywords_displayed');
+          notifyListeners();
+        });
+        debugPrint('[Firebase Remote Config] Real config loaded: max_journals=$_maxJournalsDisplayed, max_keywords=$_maxKeywordsDisplayed');
+      } catch (e) {
+        debugPrint('[MockFirebaseService] Real Remote Config init failed: $e');
+      }
+
+      try {
+        // 2. Thiết lập thông báo FCM thực tế
+        final messaging = FirebaseMessaging.instance;
+        await messaging.requestPermission(
+          alert: true,
+          badge: true,
+          sound: true,
+        );
+
+        // Lắng nghe thông báo ở chế độ foreground
+        FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+          final title = message.notification?.title ?? 'FCM Notification';
+          final body = message.notification?.body ?? '';
+          simulateIncomingNotification(title, body);
+        });
+
+        // Lắng nghe thông báo khi bấm mở app từ khay hệ thống
+        FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+          final title = message.notification?.title ?? 'FCM Notification';
+          final body = message.notification?.body ?? '';
+          simulateIncomingNotification(title, body);
+          // Tự động chuyển hướng sang tab Profile (index 3) để người dùng xem thông báo
+          try {
+            SharedState.activeTabNotifier.value = 3;
+          } catch (e) {
+            debugPrint('[FCM] Failed to redirect to Profile tab: $e');
+          }
+        });
+      } catch (e) {
+        debugPrint('[MockFirebaseService] Real FCM init failed: $e');
+      }
+
+      try {
+        // 3. Kích hoạt thu thập Crashlytics thực tế
+        if (FirebaseCrashlytics.instance.isCrashlyticsCollectionEnabled == false) {
+          await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(true);
+        }
+      } catch (e) {
+        debugPrint('[MockFirebaseService] Real Crashlytics init failed: $e');
+      }
+    }
+  }
 
   // --- 1. AUTHENTICATION STATE ---
   MockFirebaseUser? _currentUser;
@@ -136,8 +216,26 @@ class MockFirebaseService extends ChangeNotifier {
       parameters: parameters ?? {},
       timestamp: DateTime.now(),
     );
-    _analyticsEvents.insert(0, event); // Đưa lên đầu danh sách
+    _analyticsEvents.insert(0, event);
     debugPrint('[Firebase Analytics] Event logged: "$name" with parameters: $parameters');
+
+    // Gửi sự kiện Analytics thật lên Console nếu có hỗ trợ
+    if (!kIsWeb && (defaultTargetPlatform == TargetPlatform.iOS || defaultTargetPlatform == TargetPlatform.android)) {
+      try {
+        final Map<String, Object> convertedParams = {};
+        parameters?.forEach((key, value) {
+          if (value is String || value is num) {
+            convertedParams[key] = value;
+          } else {
+            convertedParams[key] = value.toString();
+          }
+        });
+        FirebaseAnalytics.instance.logEvent(name: name, parameters: convertedParams);
+      } catch (e) {
+        debugPrint('[Firebase Analytics] Real logEvent failed: $e');
+      }
+    }
+
     notifyListeners();
   }
 
@@ -151,7 +249,7 @@ class MockFirebaseService extends ChangeNotifier {
   void updateRemoteConfig({required int maxJournals, required int maxKeywords}) {
     _maxJournalsDisplayed = maxJournals;
     _maxKeywordsDisplayed = maxKeywords;
-    debugPrint('[Firebase Remote Config] Config updated. max_journals=$maxJournals, max_keywords=$maxKeywords');
+    debugPrint('[Firebase Remote Config] Local config updated. max_journals=$maxJournals, max_keywords=$maxKeywords');
     notifyListeners();
   }
 
@@ -160,11 +258,33 @@ class MockFirebaseService extends ChangeNotifier {
   List<Map<String, dynamic>> get uploadedFiles => List.unmodifiable(_uploadedFiles);
 
   Future<String> uploadPdfReport(String topicName, List<int> bytes) async {
-    // Giả lập độ trễ tải lên 1.8s
-    await Future.delayed(const Duration(milliseconds: 1800));
     final timestamp = DateTime.now().millisecondsSinceEpoch;
     final fileName = 'reports/report_${topicName.replaceAll(' ', '_')}_$timestamp.pdf';
-    final downloadUrl = 'https://firebasestorage.googleapis.com/v0/b/journal-trend-analyzer.appspot.com/o/${Uri.encodeComponent(fileName)}?alt=media';
+    String downloadUrl = '';
+    const bucketName = 'prm393-2a9d2.appspot.com';
+
+    // Cố gắng tải lên Storage thật nếu chạy trên di động và có kết nối
+    if (!kIsWeb && (defaultTargetPlatform == TargetPlatform.iOS || defaultTargetPlatform == TargetPlatform.android)) {
+      try {
+        final storageRef = FirebaseStorage.instance.ref().child(fileName);
+        final uploadTask = storageRef.putData(
+          Uint8List.fromList(bytes),
+          SettableMetadata(contentType: 'application/pdf'),
+        );
+        // Đặt giới hạn timeout 3 giây để tránh bị treo do lỗi liên kết gói cước thanh toán của Firebase
+        final snapshot = await uploadTask.timeout(const Duration(seconds: 3));
+        downloadUrl = await snapshot.ref.getDownloadURL();
+        debugPrint('[Firebase Storage] Real upload success. URL: $downloadUrl');
+      } catch (e) {
+        debugPrint('[Firebase Storage] Real upload failed or timed out (using project mock URL): $e');
+      }
+    }
+
+    // Nếu không tải lên thật được (hoặc trên desktop/web), sinh URL giả lập theo đúng ID project prm393-2a9d2
+    if (downloadUrl.isEmpty) {
+      await Future.delayed(const Duration(milliseconds: 1000));
+      downloadUrl = 'https://firebasestorage.googleapis.com/v0/b/$bucketName/o/${Uri.encodeComponent(fileName)}?alt=media';
+    }
 
     _uploadedFiles.insert(0, {
       'fileName': fileName,
@@ -215,12 +335,33 @@ class MockFirebaseService extends ChangeNotifier {
     };
     _loggedExceptions.insert(0, log);
     debugPrint('[Firebase Crashlytics] Exception logged: $exception');
+
+    // Gửi báo cáo lỗi handled thật lên Crashlytics
+    if (!kIsWeb && (defaultTargetPlatform == TargetPlatform.iOS || defaultTargetPlatform == TargetPlatform.android)) {
+      try {
+        FirebaseCrashlytics.instance.recordError(exception, stackTrace);
+      } catch (e) {
+        debugPrint('[Firebase Crashlytics] Real recordError failed: $e');
+      }
+    }
+
     notifyListeners();
   }
 
   void triggerTestCrash() {
     debugPrint('[Firebase Crashlytics] Triggering test crash...');
-    // Quăng ra lỗi chưa được xử lý để làm crash app
+
+    // Gây lỗi sập thật nếu chạy trên di động
+    if (!kIsWeb && (defaultTargetPlatform == TargetPlatform.iOS || defaultTargetPlatform == TargetPlatform.android)) {
+      try {
+        FirebaseCrashlytics.instance.crash();
+        return;
+      } catch (e) {
+        debugPrint('[Firebase Crashlytics] Real crash failed: $e');
+      }
+    }
+
+    // Fallback ném lỗi nội bộ làm sập app
     throw StateError('This is a simulated fatal crash generated for Firebase Crashlytics testing.');
   }
 }

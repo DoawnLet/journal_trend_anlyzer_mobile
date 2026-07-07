@@ -1,6 +1,7 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'dart:math' as math;
 import '../../core/services/mock_firebase_service.dart';
 import '../../core/utils/translation.dart';
 import '../models/publication_model.dart';
@@ -34,6 +35,9 @@ class JournalsPage extends StatefulWidget {
 }
 
 class _JournalsPageState extends State<JournalsPage> {
+  int _chartMetricIndex = 0;
+  int _currentPage = 0;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -87,9 +91,25 @@ class _JournalsPageState extends State<JournalsPage> {
                 }).toList()
                   ..sort((a, b) => b.count.compareTo(a.count));
 
-                // 3. Áp dụng giới hạn hiển thị từ Remote Config
-                final limit = MockFirebaseService.instance.maxJournalsDisplayed;
-                final displayedJournals = journalList.take(limit).toList();
+                // 3. Phân trang dữ liệu dựa trên Remote Config làm kích thước trang (Page Size)
+                final pageSize = MockFirebaseService.instance.maxJournalsDisplayed > 0
+                    ? MockFirebaseService.instance.maxJournalsDisplayed
+                    : 5;
+                final totalPages = (journalList.length / pageSize).ceil();
+
+                // Đảm bảo trang hiện tại nằm trong khoảng hợp lệ
+                if (_currentPage >= totalPages && totalPages > 0) {
+                  _currentPage = totalPages - 1;
+                }
+                if (_currentPage < 0) {
+                  _currentPage = 0;
+                }
+
+                final startIndex = _currentPage * pageSize;
+                final endIndex = (startIndex + pageSize) > journalList.length
+                    ? journalList.length
+                    : (startIndex + pageSize);
+                final displayedJournals = journalList.isEmpty ? <JournalStats>[] : journalList.sublist(startIndex, endIndex);
 
                 // 4. Tính toán thống kê vĩ mô
                 final totalJournalsCount = journalList.length;
@@ -106,7 +126,11 @@ class _JournalsPageState extends State<JournalsPage> {
 
                       // Biểu đồ đóng góp Tạp chí
                       Text(
-                        'Biểu đồ đóng góp sản lượng',
+                        _chartMetricIndex == 0
+                            ? 'Biểu đồ đóng góp sản lượng'
+                            : (_chartMetricIndex == 1
+                                ? 'Biểu đồ phân bố trích dẫn'
+                                : 'Biểu đồ trích dẫn trung bình'),
                         style: GoogleFonts.outfit(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -114,7 +138,18 @@ class _JournalsPageState extends State<JournalsPage> {
                         ),
                       ),
                       const SizedBox(height: 10),
-                      _buildContributionChart(displayedJournals),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          _buildMetricTab(0, 'articles'.tr(), Icons.article_rounded),
+                          const SizedBox(width: 8),
+                          _buildMetricTab(1, 'citations'.tr(), Icons.star_rounded),
+                          const SizedBox(width: 8),
+                          _buildMetricTab(2, 'avg_citations_short'.tr(), Icons.insights_rounded),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      _buildContributionChart(journalList),
                       const SizedBox(height: 24),
 
                       // Danh sách Tạp chí Hàng đầu
@@ -122,7 +157,7 @@ class _JournalsPageState extends State<JournalsPage> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            'Top tạp chí (${displayedJournals.length}/$totalJournalsCount)',
+                            'Top tạp chí (${startIndex + 1} - $endIndex trên $totalJournalsCount)',
                             style: GoogleFonts.outfit(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
@@ -130,7 +165,7 @@ class _JournalsPageState extends State<JournalsPage> {
                             ),
                           ),
                           Text(
-                            'Remote Config Limit: $limit',
+                            'Remote Config Limit: $pageSize',
                             style: const TextStyle(color: Color(0xFF80CBC4), fontSize: 11, fontWeight: FontWeight.bold),
                           ),
                         ],
@@ -142,9 +177,47 @@ class _JournalsPageState extends State<JournalsPage> {
                         itemCount: displayedJournals.length,
                         itemBuilder: (context, index) {
                           final journal = displayedJournals[index];
-                          return _buildJournalItem(journal, index + 1);
+                          return _buildJournalItem(journal, startIndex + index + 1);
                         },
                       ),
+                      if (totalPages > 1) ...[
+                        const SizedBox(height: 16),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.chevron_left_rounded, color: Colors.white70),
+                              onPressed: _currentPage > 0
+                                  ? () {
+                                      setState(() {
+                                        _currentPage--;
+                                      });
+                                    }
+                                  : null,
+                            ),
+                            const SizedBox(width: 12),
+                            Text(
+                              'Trang ${_currentPage + 1} / $totalPages',
+                              style: GoogleFonts.outfit(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            IconButton(
+                              icon: const Icon(Icons.chevron_right_rounded, color: Colors.white70),
+                              onPressed: _currentPage < totalPages - 1
+                                  ? () {
+                                      setState(() {
+                                        _currentPage++;
+                                      });
+                                    }
+                                  : null,
+                            ),
+                          ],
+                        ),
+                      ],
                     ],
                   ),
                 );
@@ -267,116 +340,244 @@ class _JournalsPageState extends State<JournalsPage> {
     );
   }
 
+  Widget _buildMetricTab(int index, String label, IconData icon) {
+    final selected = _chartMetricIndex == index;
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _chartMetricIndex = index;
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: selected ? const Color(0xFF80CBC4) : Colors.white.withOpacity(0.06),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: selected ? const Color(0xFF80CBC4) : Colors.white.withOpacity(0.12),
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              size: 14,
+              color: selected ? const Color(0xFF123838) : Colors.white70,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: GoogleFonts.outfit(
+                color: selected ? const Color(0xFF123838) : Colors.white70,
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildContributionChart(List<JournalStats> list) {
     if (list.isEmpty) return const SizedBox.shrink();
 
-    final maxVal = list.first.count.toDouble();
+    // Sắp xếp giảm dần từ cao xuống thấp như yêu cầu
+    final sortedList = List<JournalStats>.from(list);
+    if (_chartMetricIndex == 0) {
+      sortedList.sort((a, b) => b.count.compareTo(a.count));
+    } else if (_chartMetricIndex == 1) {
+      sortedList.sort((a, b) => b.totalCitations.compareTo(a.totalCitations));
+    } else {
+      sortedList.sort((a, b) => b.avgCitations.compareTo(a.avgCitations));
+    }
+
+    double maxRawVal = 0.0;
+    for (final item in sortedList) {
+      final v = _chartMetricIndex == 0
+          ? item.count.toDouble()
+          : (_chartMetricIndex == 1
+              ? item.totalCitations.toDouble()
+              : item.avgCitations);
+      if (v > maxRawVal) maxRawVal = v;
+    }
+
+    // Nếu giá trị lớn nhất vượt quá 100 (như chỉ số trích dẫn), áp dụng log10 scale để không bị nuốt cột nhỏ
+    final bool useLogScale = maxRawVal > 100;
+    double log10(num x) => math.log(x) / math.ln10;
+
+    final double maxYVal = useLogScale 
+        ? log10(maxRawVal + 1) * 1.15 
+        : (maxRawVal == 0 ? 1.0 : maxRawVal * 1.2);
+
+    final double chartWidth = sortedList.length * 48.0 < 340.0 ? 340.0 : sortedList.length * 48.0;
 
     return GlassCard(
       borderRadius: 16,
       color: Colors.white.withOpacity(0.06),
       borderColor: Colors.white.withOpacity(0.12),
       borderWidth: 1.0,
-      child: SizedBox(
-        height: 180,
-        child: BarChart(
-          BarChartData(
-            alignment: BarChartAlignment.spaceAround,
-            maxY: maxVal == 0 ? 1.0 : maxVal * 1.2,
-            barTouchData: BarTouchData(
-              touchTooltipData: BarTouchTooltipData(
-                getTooltipColor: (group) => const Color(0xFF0F364A).withOpacity(0.9),
-                tooltipBorder: BorderSide(color: Colors.white.withOpacity(0.15), width: 1.0),
-                tooltipBorderRadius: BorderRadius.circular(8),
-                getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                  return BarTooltipItem(
-                    '${list[groupIndex].name}\n',
-                    GoogleFonts.outfit(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
+      child: Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: SizedBox(
+            width: chartWidth,
+            height: 210, // Tăng chiều cao để tooltip không bị cắt bởi ScrollView
+            child: Padding(
+              padding: const EdgeInsets.only(top: 24.0), // Chừa khoảng trống phía trên cho tooltip
+              child: BarChart(
+                BarChartData(
+                  alignment: BarChartAlignment.spaceAround,
+                  maxY: maxYVal,
+                  barTouchData: BarTouchData(
+                    touchTooltipData: BarTouchTooltipData(
+                      getTooltipColor: (group) => const Color(0xFF0F364A).withOpacity(0.9),
+                      tooltipBorder: BorderSide(color: Colors.white.withOpacity(0.15), width: 1.0),
+                      tooltipBorderRadius: BorderRadius.circular(8),
+                      fitInsideHorizontally: true,
+                      fitInsideVertically: true,
+                      getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                        final rawItem = sortedList[groupIndex];
+                      String metricLabel = '';
+                      if (_chartMetricIndex == 0) {
+                        metricLabel = '${rawItem.count} ${'articles'.tr()}';
+                      } else if (_chartMetricIndex == 1) {
+                        metricLabel = '${rawItem.totalCitations} ${'citations'.tr()}';
+                      } else {
+                        metricLabel = '${rawItem.avgCitations.toStringAsFixed(1)} ${'avg_citations_short'.tr()}';
+                      }
+
+                      return BarTooltipItem(
+                        '${sortedList[groupIndex].name}\n',
+                        GoogleFonts.outfit(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                        children: <TextSpan>[
+                          TextSpan(
+                            text: metricLabel,
+                            style: GoogleFonts.inter(
+                              color: const Color(0xFF80CBC4),
+                              fontWeight: FontWeight.w600,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+                gridData: FlGridData(
+                  show: true,
+                  getDrawingHorizontalLine: (_) => FlLine(
+                    color: Colors.white.withOpacity(0.08),
+                    strokeWidth: 1,
+                  ),
+                  drawVerticalLine: false,
+                ),
+                borderData: FlBorderData(show: false),
+                titlesData: FlTitlesData(
+                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  leftTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 42,
+                      interval: useLogScale ? 1.0 : null,
+                      getTitlesWidget: (val, meta) {
+                        if (useLogScale) {
+                          final intPower = val.round();
+                          if ((val - intPower).abs() > 0.05) return const SizedBox.shrink();
+                          
+                          final double realVal = math.pow(10, intPower).toDouble();
+                          String text;
+                          if (realVal >= 1000000) {
+                            text = '${(realVal / 1000000).toStringAsFixed(0)}M';
+                          } else if (realVal >= 1000) {
+                            text = '${(realVal / 1000).toStringAsFixed(0)}K';
+                          } else {
+                            text = realVal.toStringAsFixed(0);
+                          }
+                          
+                          return SideTitleWidget(
+                            meta: meta,
+                            space: 4,
+                            child: Text(
+                              text,
+                              style: const TextStyle(color: Colors.white54, fontSize: 10),
+                            ),
+                          );
+                        } else {
+                          final text = _chartMetricIndex == 2 ? val.toStringAsFixed(1) : val.toInt().toString();
+                          return SideTitleWidget(
+                            meta: meta,
+                            space: 4,
+                            child: Text(
+                              text,
+                              style: const TextStyle(color: Colors.white54, fontSize: 10),
+                            ),
+                          );
+                        }
+                      },
                     ),
-                    children: <TextSpan>[
-                      TextSpan(
-                        text: '${rod.toY.toInt()} ${'articles'.tr()}',
-                        style: GoogleFonts.inter(
-                          color: const Color(0xFF80CBC4),
-                          fontWeight: FontWeight.w600,
-                          fontSize: 11,
+                  ),
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      getTitlesWidget: (val, meta) {
+                        final index = val.toInt();
+                        if (index < 0 || index >= sortedList.length) return const SizedBox.shrink();
+                        final name = sortedList[index].name;
+                        final shortName = name.length > 12 ? '${name.substring(0, 9)}..' : name;
+                        return SideTitleWidget(
+                          meta: meta,
+                          space: 4,
+                          child: Text(
+                            shortName,
+                            style: const TextStyle(color: Colors.white54, fontSize: 9),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+                barGroups: List.generate(sortedList.length, (i) {
+                  final rawY = _chartMetricIndex == 0
+                      ? sortedList[i].count.toDouble()
+                      : (_chartMetricIndex == 1
+                          ? sortedList[i].totalCitations.toDouble()
+                          : sortedList[i].avgCitations);
+                  final yVal = useLogScale ? log10(rawY + 1) : rawY;
+                  return BarChartGroupData(
+                    x: i,
+                    barRods: [
+                      BarChartRodData(
+                        toY: yVal,
+                        width: 12,
+                        borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+                        gradient: const LinearGradient(
+                          begin: Alignment.bottomCenter,
+                          end: Alignment.topCenter,
+                          colors: [
+                            Color(0xFF00ACC1),
+                            Color(0xFF80CBC4),
+                          ],
                         ),
                       ),
                     ],
                   );
-                },
+                }),
               ),
             ),
-            gridData: FlGridData(
-              show: true,
-              getDrawingHorizontalLine: (_) => FlLine(
-                color: Colors.white.withOpacity(0.08),
-                strokeWidth: 1,
-              ),
-              drawVerticalLine: false,
-            ),
-            borderData: FlBorderData(show: false),
-            titlesData: FlTitlesData(
-              topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-              rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-              leftTitles: AxisTitles(
-                sideTitles: SideTitles(
-                  showTitles: true,
-                  reservedSize: 28,
-                  getTitlesWidget: (val, meta) => Text(
-                    val.toInt().toString(),
-                    style: const TextStyle(color: Colors.white54, fontSize: 10),
-                  ),
-                ),
-              ),
-              bottomTitles: AxisTitles(
-                sideTitles: SideTitles(
-                  showTitles: true,
-                  getTitlesWidget: (val, meta) {
-                    final index = val.toInt();
-                    if (index < 0 || index >= list.length) return const SizedBox.shrink();
-                    final name = list[index].name;
-                    final shortName = name.length > 8 ? '${name.substring(0, 6)}..' : name;
-                    return Padding(
-                      padding: const EdgeInsets.only(top: 6.0),
-                      child: Text(
-                        shortName,
-                        style: const TextStyle(color: Colors.white54, fontSize: 9),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ),
-            barGroups: List.generate(list.length, (i) {
-              return BarChartGroupData(
-                x: i,
-                barRods: [
-                  BarChartRodData(
-                    toY: list[i].count.toDouble(),
-                    width: 12,
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
-                    gradient: const LinearGradient(
-                      begin: Alignment.bottomCenter,
-                      end: Alignment.topCenter,
-                      colors: [
-                        Color(0xFF00ACC1),
-                        Color(0xFF80CBC4),
-                      ],
-                    ),
-                  ),
-                ],
-              );
-            }),
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildJournalItem(JournalStats journal, int rank) {
     Color rankColor;
@@ -437,12 +638,42 @@ class _JournalsPageState extends State<JournalsPage> {
           overflow: TextOverflow.ellipsis,
         ),
         subtitle: Padding(
-          padding: const EdgeInsets.only(top: 4.0),
-          child: Text(
-            'Số bài báo: ${journal.count} bài • Số trích dẫn: ${journal.totalCitations}',
-            style: GoogleFonts.inter(
-              textStyle: const TextStyle(color: Colors.white60, fontSize: 12),
-            ),
+          padding: const EdgeInsets.only(top: 6.0),
+          child: Row(
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.article_outlined, size: 13, color: Colors.white70),
+                  const SizedBox(width: 4),
+                  Text(
+                    '${journal.count}',
+                    style: GoogleFonts.inter(color: Colors.white70, fontSize: 11),
+                  ),
+                ],
+              ),
+              const SizedBox(width: 12),
+              Row(
+                children: [
+                  const Icon(Icons.star_outline_rounded, size: 13, color: Colors.white70),
+                  const SizedBox(width: 4),
+                  Text(
+                    '${journal.totalCitations}',
+                    style: GoogleFonts.inter(color: Colors.white70, fontSize: 11),
+                  ),
+                ],
+              ),
+              const SizedBox(width: 12),
+              Row(
+                children: [
+                  const Icon(Icons.insights_rounded, size: 13, color: Colors.white70),
+                  const SizedBox(width: 4),
+                  Text(
+                    journal.avgCitations.toStringAsFixed(1),
+                    style: GoogleFonts.inter(color: Colors.white70, fontSize: 11),
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
         trailing: const Icon(Icons.chevron_right_rounded, color: Colors.white70),

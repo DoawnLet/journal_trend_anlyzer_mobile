@@ -9,6 +9,7 @@ import '../state_management/shared_state.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/research_trend_analysis/publication_trend_chart.dart';
 import '../widgets/research_trend_analysis/metric_card_grid.dart';
+import '../widgets/search_filter_bottom_sheet.dart';
 import 'detail_page.dart';
 
 /// Màn hình Trang chủ (Home Screen) - Bảng điều khiển phân tích tổng quan đề tài nghiên cứu
@@ -171,6 +172,58 @@ class _HomePageState extends State<HomePage> {
                           });
                         },
                       ),
+                    ListenableBuilder(
+                      listenable: SharedState.publicationFilterNotifier,
+                      builder: (context, _) {
+                        final filter = SharedState.publicationFilterNotifier.value;
+                        final activeCount = filter.activeFilterCount;
+                        
+                        return Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.tune_rounded, color: Colors.white70, size: 20),
+                              tooltip: 'filter_and_sort'.tr(),
+                              onPressed: () {
+                                showModalBottomSheet(
+                                  context: context,
+                                  isScrollControlled: true,
+                                  backgroundColor: Colors.transparent,
+                                  builder: (context) => SearchFilterBottomSheet(
+                                    notifier: widget.searchNotifier,
+                                  ),
+                                );
+                              },
+                            ),
+                            if (activeCount > 0)
+                              Positioned(
+                                right: 4,
+                                top: 4,
+                                child: Container(
+                                  padding: const EdgeInsets.all(2),
+                                  decoration: const BoxDecoration(
+                                    color: Colors.redAccent,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  constraints: const BoxConstraints(
+                                    minWidth: 14,
+                                    minHeight: 14,
+                                  ),
+                                  child: Text(
+                                    '$activeCount',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 8,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        );
+                      },
+                    ),
                   ],
                 ),
               ),

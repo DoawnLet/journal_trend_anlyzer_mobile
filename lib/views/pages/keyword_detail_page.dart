@@ -49,7 +49,7 @@ class KeywordDetailPage extends StatelessWidget {
     final relatedJournals = journalCounts.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
 
-    // 3. Tính toán và xếp hạng tác giả đóng góp (Xắp xếp giảm dần theo sản lượng bài báo)
+    // 3. Tính toán và xếp hạng tác giả đóng góp (Sắp xếp giảm dần)
     final Map<String, int> authorCounts = {};
     for (final p in publications) {
       for (final author in p.authors) {
@@ -59,12 +59,12 @@ class KeywordDetailPage extends StatelessWidget {
     final List<AuthorKeywordStats> rankedAuthors = authorCounts.entries
         .map((entry) => AuthorKeywordStats(name: entry.key, count: entry.value))
         .toList()
-      ..sort((a, b) => b.count.compareTo(a.count)); // Giảm dần theo số lượng bài viết
+      ..sort((a, b) => b.count.compareTo(a.count)); // Sắp xếp giảm dần theo số lượng công bố
 
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'Chi tiết Từ khóa',
+          'keyword_detail'.tr(),
           style: GoogleFonts.outfit(fontWeight: FontWeight.bold),
         ),
         leading: IconButton(
@@ -88,12 +88,19 @@ class KeywordDetailPage extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Tên Từ khóa
+              // Tên Từ khóa & Tần suất
               GlassCard(
                 borderColor: const Color(0xFF80CBC4).withOpacity(0.3),
                 child: Row(
                   children: [
-                    const Icon(Icons.tag_rounded, color: Color(0xFF80CBC4), size: 32),
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: const Color(0xFF80CBC4).withOpacity(0.1),
+                      ),
+                      child: const Icon(Icons.tag_rounded, color: Color(0xFF80CBC4), size: 28),
+                    ),
                     const SizedBox(width: 14),
                     Expanded(
                       child: Column(
@@ -109,8 +116,8 @@ class KeywordDetailPage extends StatelessWidget {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            'Tần suất xuất hiện: ${keywordStats.count} lần',
-                            style: const TextStyle(color: Colors.white60, fontSize: 12),
+                            'appearance_frequency'.tr().replaceAll('{count}', keywordStats.count.toString()),
+                            style: GoogleFonts.inter(color: Colors.white60, fontSize: 12),
                           ),
                         ],
                       ),
@@ -122,7 +129,7 @@ class KeywordDetailPage extends StatelessWidget {
 
               // Biểu đồ xu hướng xuất bản của từ khóa
               Text(
-                'Xu hướng công bố theo năm',
+                'yearly_publication_trend'.tr(),
                 style: GoogleFonts.outfit(
                   fontSize: 15,
                   fontWeight: FontWeight.bold,
@@ -136,9 +143,9 @@ class KeywordDetailPage extends StatelessWidget {
               ),
               const SizedBox(height: 24),
 
-              // Xếp hạng tác giả đóng góp hàng đầu (Ranked Authors - descending)
+              // Xếp hạng tác giả đóng góp hàng đầu
               Text(
-                'Tác giả đóng góp hàng đầu',
+                'top_contributing_authors'.tr(),
                 style: GoogleFonts.outfit(
                   fontSize: 15,
                   fontWeight: FontWeight.bold,
@@ -150,28 +157,30 @@ class KeywordDetailPage extends StatelessWidget {
               const SizedBox(height: 24),
 
               // Tạp chí liên quan hàng đầu
-              Text(
-                'Tạp chí liên quan',
-                style: GoogleFonts.outfit(
-                  fontSize: 15,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
+              if (relatedJournals.isNotEmpty) ...[
+                Text(
+                  'related_journals'.tr(),
+                  style: GoogleFonts.outfit(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 10),
-              _buildRelatedJournalsSection(relatedJournals),
-              const SizedBox(height: 24),
+                const SizedBox(height: 10),
+                _buildRelatedJournalsSection(relatedJournals),
+                const SizedBox(height: 24),
+              ],
 
               // Bài báo liên quan
               Text(
-                'Bài viết liên quan (${publications.length})',
+                '${'related_publications'.tr()} (${publications.length})',
                 style: GoogleFonts.outfit(
                   fontSize: 15,
                   fontWeight: FontWeight.bold,
                   color: Colors.white,
                 ),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
               ListView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
@@ -179,38 +188,54 @@ class KeywordDetailPage extends StatelessWidget {
                 itemBuilder: (context, index) {
                   final paper = publications[index];
                   return Container(
-                    margin: const EdgeInsets.only(bottom: 10),
+                    margin: const EdgeInsets.only(bottom: 12),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.06),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.white.withOpacity(0.1)),
+                      color: Colors.white.withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.white.withOpacity(0.08)),
                     ),
                     child: ListTile(
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                       title: Text(
                         paper.title,
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                        style: GoogleFonts.outfit(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
                       subtitle: Padding(
-                        padding: const EdgeInsets.only(top: 4.0),
+                        padding: const EdgeInsets.only(top: 6.0),
                         child: Text(
-                          '${paper.authors.isNotEmpty ? paper.authors.first : "N/A"} • ${paper.publicationYear} • ${paper.journalName}',
-                          style: const TextStyle(color: Colors.white54, fontSize: 11),
+                          '${paper.authors.isNotEmpty ? paper.authors.first : "N/A"} • ${paper.publicationYear} • ${paper.journalName.trim().isEmpty ? 'unknown_journal'.tr() : paper.journalName}',
+                          style: GoogleFonts.inter(color: Colors.white54, fontSize: 11),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
                       trailing: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                         decoration: BoxDecoration(
                           color: const Color(0xFF80CBC4).withOpacity(0.15),
                           borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: const Color(0xFF80CBC4).withOpacity(0.25)),
                         ),
-                        child: Text(
-                          '${paper.citationCount} 🌟',
-                          style: const TextStyle(color: Color(0xFF80CBC4), fontSize: 11, fontWeight: FontWeight.bold),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              '${paper.citationCount}',
+                              style: GoogleFonts.inter(
+                                color: const Color(0xFF80CBC4),
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            const Icon(Icons.star_rounded, color: Color(0xFF80CBC4), size: 12),
+                          ],
                         ),
                       ),
                       onTap: () {
@@ -243,33 +268,60 @@ class KeywordDetailPage extends StatelessWidget {
 
   Widget _buildRankedAuthorsSection(List<AuthorKeywordStats> list) {
     if (list.isEmpty) {
-      return const GlassCard(child: Center(child: Text('Không có dữ liệu tác giả', style: TextStyle(color: Colors.white60))));
+      return GlassCard(
+        child: Center(
+          child: Text(
+            'no_author_data'.tr(),
+            style: const TextStyle(color: Colors.white60),
+          ),
+        ),
+      );
     }
 
     final topList = list.take(5).toList();
+    final maxAuthorCount = topList.first.count;
 
     return GlassCard(
       padding: const EdgeInsets.all(12),
       child: Column(
         children: List.generate(topList.length, (i) {
           final author = topList[i];
+          Color rankColor;
+          Color rankBgColor;
+          switch (i) {
+            case 0:
+              rankColor = const Color(0xFFFFD700); // Gold
+              rankBgColor = const Color(0xFFFFD700).withOpacity(0.15);
+              break;
+            case 1:
+              rankColor = const Color(0xFFC0C0C0); // Silver
+              rankBgColor = const Color(0xFFC0C0C0).withOpacity(0.15);
+              break;
+            case 2:
+              rankColor = const Color(0xFFCD7F32); // Bronze
+              rankBgColor = const Color(0xFFCD7F32).withOpacity(0.15);
+              break;
+            default:
+              rankColor = const Color(0xFF80CBC4); // Teal
+              rankBgColor = const Color(0xFF80CBC4).withOpacity(0.1);
+          }
+
           return Padding(
             padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 6.0),
             child: Row(
               children: [
-                // Số thứ tự xếp hạng
                 Container(
                   width: 24,
                   height: 24,
                   decoration: BoxDecoration(
-                    color: i == 0 ? Colors.amber.withOpacity(0.2) : Colors.white10,
+                    color: rankBgColor,
                     shape: BoxShape.circle,
                   ),
                   alignment: Alignment.center,
                   child: Text(
                     (i + 1).toString(),
-                    style: TextStyle(
-                      color: i == 0 ? Colors.amber : Colors.white70,
+                    style: GoogleFonts.outfit(
+                      color: rankColor,
                       fontWeight: FontWeight.bold,
                       fontSize: 12,
                     ),
@@ -277,15 +329,42 @@ class KeywordDetailPage extends StatelessWidget {
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Text(
-                    author.name,
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13),
-                    overflow: TextOverflow.ellipsis,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        author.name,
+                        style: GoogleFonts.outfit(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 6),
+                      // Thanh thanh đo tỷ lệ đóng góp trực quan của Tác giả (Ranking bar chart concept)
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(2),
+                        child: SizedBox(
+                          height: 4,
+                          width: 140,
+                          child: LinearProgressIndicator(
+                            value: maxAuthorCount == 0 ? 0.0 : author.count / maxAuthorCount,
+                            backgroundColor: Colors.white.withOpacity(0.05),
+                            valueColor: AlwaysStoppedAnimation<Color>(rankColor.withOpacity(0.85)),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 Text(
-                  '${author.count} bài viết',
-                  style: const TextStyle(color: Color(0xFF80CBC4), fontSize: 12, fontWeight: FontWeight.bold),
+                  '${author.count} ${'articles'.tr()}',
+                  style: GoogleFonts.inter(
+                    color: const Color(0xFF80CBC4),
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ],
             ),
@@ -301,37 +380,57 @@ class KeywordDetailPage extends StatelessWidget {
     }
 
     final topList = list.take(3).toList();
+    final maxJournalCount = topList.first.value;
 
     return Column(
       children: topList.map((entry) {
         return Container(
           margin: const EdgeInsets.only(bottom: 8),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
             color: Colors.white.withOpacity(0.04),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: Colors.white.withOpacity(0.06)),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.white.withOpacity(0.08)),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Expanded(
-                child: Text(
-                  entry.key,
-                  style: const TextStyle(color: Colors.white70, fontSize: 13),
-                  overflow: TextOverflow.ellipsis,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      entry.key,
+                      style: GoogleFonts.outfit(color: Colors.white70, fontSize: 13),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 6),
+                    // Thanh đo tỷ lệ bài đăng của Tạp chí
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(2),
+                      child: SizedBox(
+                        height: 3,
+                        width: 120,
+                        child: LinearProgressIndicator(
+                          value: maxJournalCount == 0 ? 0.0 : entry.value / maxJournalCount,
+                          backgroundColor: Colors.white.withOpacity(0.05),
+                          valueColor: AlwaysStoppedAnimation<Color>(const Color(0xFF80CBC4).withOpacity(0.7)),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(width: 10),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Colors.white12,
+                  color: Colors.white.withOpacity(0.08),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
-                  '${entry.value} bài',
-                  style: const TextStyle(color: Colors.white, fontSize: 11),
+                  '${entry.value} ${'articles'.tr()}',
+                  style: GoogleFonts.inter(color: Colors.white, fontSize: 11),
                 ),
               ),
             ],
