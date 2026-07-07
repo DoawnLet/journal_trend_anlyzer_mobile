@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/utils/translation.dart';
@@ -12,16 +13,20 @@ class DetailPage extends StatelessWidget {
 
   const DetailPage({super.key, required this.publication});
 
-  Future<void> _openDoiLink(BuildContext context, String doiUrl) async {
-    final cleanDoi = doiUrl.trim();
-    if (cleanDoi.isEmpty) {
-      _showDoiError(context, 'doi_link_invalid'.tr());
+  Future<void> _openLink(BuildContext context, String url) async {
+    final cleanUrl = url.trim();
+    if (cleanUrl.isEmpty) {
+      _showError(context, 'doi_link_invalid'.tr());
       return;
     }
 
-    final uri = _normalizeDoiUri(cleanDoi);
+    Uri? uri = Uri.tryParse(cleanUrl);
+    if (uri == null || !uri.hasScheme) {
+      uri = _normalizeDoiUri(cleanUrl);
+    }
+
     if (uri == null) {
-      _showDoiError(context, 'doi_link_invalid'.tr());
+      _showError(context, 'doi_link_invalid'.tr());
       return;
     }
 
@@ -35,14 +40,13 @@ class DetailPage extends StatelessWidget {
       }
 
       if (!launched) {
-        _showDoiError(context, 'no_app_to_open_link'.tr());
+        _showError(context, 'no_app_to_open_link'.tr());
       }
     } catch (e) {
       if (!context.mounted) {
         return;
       }
-
-      _showDoiError(context, '${'cannot_open_doi'.tr()}: $e');
+      _showError(context, '${'cannot_open_doi'.tr()}: $e');
     }
   }
 
@@ -74,7 +78,7 @@ class DetailPage extends StatelessWidget {
         .replaceFirst(RegExp(r'^(dx\.)?doi\.org/', caseSensitive: false), '');
   }
 
-  void _showDoiError(BuildContext context, String message) {
+  void _showError(BuildContext context, String message) {
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(message), backgroundColor: AppColors.error),
@@ -194,47 +198,41 @@ class DetailPage extends StatelessWidget {
                   ),
                   label: Text('${publication.citationCount} ${'citations'.tr()}'),
                 ),
-                if (publication.journalName.isNotEmpty)
-                  Chip(
-                    avatar: const Icon(
-                      Icons.menu_book_rounded,
-                      size: 16,
-                      color: Colors.white,
-                    ),
-                    label: Text(publication.journalName),
-                  ),
               ],
             ),
-            const SizedBox(height: 20),
-            if (publication.doi != null && publication.doi!.isNotEmpty) ...[
+            if (publication.journalName.isNotEmpty) ...[
+              const SizedBox(height: 12),
               GlassCard(
-                padding: const EdgeInsets.all(14),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(
-                      Icons.link_rounded,
-                      color: Colors.white70,
-                      size: 18,
+                    const Padding(
+                      padding: EdgeInsets.only(top: 2.0),
+                      child: Icon(
+                        Icons.menu_book_rounded,
+                        color: Colors.white,
+                      ),
                     ),
-                    const SizedBox(width: 10),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'DOI',
-                            style: theme.textTheme.labelMedium?.copyWith(
+                            'journal_prefix'.tr(),
+                            style: theme.textTheme.bodySmall?.copyWith(
                               color: Colors.white70,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
-                          const SizedBox(height: 4),
+                          const SizedBox(height: 8),
                           Text(
-                            'DOI: ${_formatDoiDisplay(publication.doi!)}',
+                            publication.journalName,
                             style: theme.textTheme.bodyMedium?.copyWith(
                               color: Colors.white,
-                              height: 1.35,
+                              fontWeight: FontWeight.w500,
+                              height: 1.3,
                             ),
                           ),
                         ],
@@ -243,17 +241,136 @@ class DetailPage extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(height: 12),
-              ElevatedButton.icon(
-                onPressed: () => _openDoiLink(context, publication.doi!),
-                icon: const Icon(Icons.open_in_new_rounded, size: 18),
-                label: Text('open_doi_link'.tr()),
-                style: ElevatedButton.styleFrom(
-                  minimumSize: const Size.fromHeight(50),
-                ),
-              ),
-              const SizedBox(height: 20),
             ],
+            const SizedBox(height: 20),
+            // --- DOI Section ---
+            GlassCard(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.fingerprint_rounded,
+                            color: Color(0xFF80CBC4),
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'DOI',
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              color: Colors.white70,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (publication.doi != null && publication.doi!.isNotEmpty)
+                        IconButton(
+                          icon: const Icon(
+                            Icons.copy_all_rounded,
+                            color: Colors.white70,
+                            size: 20,
+                          ),
+                          tooltip: 'copy_doi'.tr(),
+                          onPressed: () {
+                            Clipboard.setData(ClipboardData(text: publication.doi!));
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('doi_copied'.tr()),
+                                duration: const Duration(seconds: 2),
+                              ),
+                            );
+                          },
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 28.0, bottom: 8.0),
+                    child: Text(
+                      (publication.doi != null && publication.doi!.isNotEmpty)
+                          ? _formatDoiDisplay(publication.doi!)
+                          : 'not_available'.tr(),
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: Colors.white,
+                        fontStyle: (publication.doi == null || publication.doi!.isEmpty)
+                            ? FontStyle.italic
+                            : FontStyle.normal,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+            
+            // --- Access Links Section ---
+            Text(
+              'access_links'.tr(),
+              style: theme.textTheme.titleMedium?.copyWith(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Column(
+              children: [
+                // Nút mở bài báo gốc
+                if (publication.landingPageUrl != null || (publication.doi != null && publication.doi!.isNotEmpty))
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      final url = publication.landingPageUrl ?? publication.doi!;
+                      _openLink(context, url);
+                    },
+                    icon: const Icon(Icons.open_in_new_rounded, size: 18),
+                    label: Text('open_original_publication'.tr()),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF00796B),
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size.fromHeight(50),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  )
+                else
+                  ElevatedButton.icon(
+                    onPressed: null,
+                    icon: const Icon(Icons.link_off_rounded, size: 18),
+                    label: Text('open_original_publication'.tr()),
+                    style: ElevatedButton.styleFrom(
+                      minimumSize: const Size.fromHeight(50),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                  
+                // Nút mở bản PDF
+                if (publication.pdfUrl != null && publication.pdfUrl!.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  OutlinedButton.icon(
+                    onPressed: () => _openLink(context, publication.pdfUrl!),
+                    icon: const Icon(Icons.picture_as_pdf_rounded, size: 18, color: Color(0xFFE57373)),
+                    label: Text('view_pdf'.tr()),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      side: const BorderSide(color: Color(0xFFE57373), width: 1.5),
+                      minimumSize: const Size.fromHeight(50),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+            const SizedBox(height: 20),
             if (publication.concepts.isNotEmpty) ...[
               Text(
                 'concepts'.tr(),

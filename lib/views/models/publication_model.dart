@@ -16,6 +16,8 @@ class Publication {
   final String? subfield;
   final String? field;
   final String? domain;
+  final String? landingPageUrl;
+  final String? pdfUrl;
 
   const Publication({
     required this.id,
@@ -34,6 +36,8 @@ class Publication {
     this.subfield,
     this.field,
     this.domain,
+    this.landingPageUrl,
+    this.pdfUrl,
   });
 
   /// Khởi tạo đối tượng Publication từ cấu trúc JSON trả về của OpenAlex API.
@@ -75,6 +79,8 @@ class Publication {
         concepts: const [],
         topics: const [],
         publicationType: 'publisher',
+        landingPageUrl: homepage,
+        pdfUrl: null,
       );
     }
 
@@ -91,18 +97,36 @@ class Publication {
 
     // 2. Phân tích tên tạp chí/nơi công bố (primary_location -> source -> display_name)
     String parsedJournal = 'Unknown Journal';
+    String? parsedLandingPageUrl;
+    String? parsedPdfUrl;
+    
     final primaryLoc = json['primary_location'];
-    if (primaryLoc != null && primaryLoc['source'] != null) {
-      final name = primaryLoc['source']['display_name'];
-      if (name != null) {
-        parsedJournal = name.toString();
+    if (primaryLoc != null) {
+      if (primaryLoc['source'] != null) {
+        final name = primaryLoc['source']['display_name'];
+        if (name != null) {
+          parsedJournal = name.toString();
+        }
+      }
+      parsedLandingPageUrl = primaryLoc['landing_page_url']?.toString();
+      parsedPdfUrl = primaryLoc['pdf_url']?.toString();
+    }
+
+    // Dự phòng tìm kiếm link gốc trong danh sách locations nếu primary_location không có
+    if (parsedLandingPageUrl == null && json['locations'] is List) {
+      for (var loc in json['locations']) {
+        if (loc['landing_page_url'] != null) {
+          parsedLandingPageUrl = loc['landing_page_url'].toString();
+          parsedPdfUrl ??= loc['pdf_url']?.toString();
+          break;
+        }
       }
     }
 
     // 3. Tái dựng nội dung tóm tắt (Abstract) từ 'abstract_inverted_index' của OpenAlex
-    String parsedAbstract = 'Không có tóm tắt.';
+    String parsedAbstract = '';
     final index = json['abstract_inverted_index'];
-    if (index is Map<String, dynamic>) {
+    if (index is Map) {
       parsedAbstract = _reconstructAbstract(index);
     }
 
@@ -174,29 +198,31 @@ class Publication {
       subfield: parsedSubfield,
       field: parsedField,
       domain: parsedDomain,
+      landingPageUrl: parsedLandingPageUrl,
+      pdfUrl: parsedPdfUrl,
     );
   }
 
   /// Thuật toán tái tạo đoạn tóm tắt đầy đủ từ chỉ mục đảo ngược (Inverted Index) của OpenAlex.
   /// OpenAlex mã hóa Abstract dưới dạng: {"word": [positions...]} vì lý do bản quyền.
-  static String _reconstructAbstract(Map<String, dynamic> index) {
+  static String _reconstructAbstract(Map index) {
     if (index.isEmpty) {
-      return 'Không có tóm tắt.';
+      return '';
     }
 
     final Map<int, String> positionToWord = {};
     index.forEach((word, positions) {
       if (positions is List) {
         for (var pos in positions) {
-          if (pos is int) {
-            positionToWord[pos] = word;
+          if (pos is num) {
+            positionToWord[pos.toInt()] = word.toString();
           }
         }
       }
     });
 
     if (positionToWord.isEmpty) {
-      return 'Không có tóm tắt.';
+      return '';
     }
 
     // Sắp xếp các từ theo vị trí của chúng
