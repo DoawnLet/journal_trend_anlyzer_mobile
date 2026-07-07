@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../core/services/mock_firebase_service.dart';
+import '../../core/utils/translation.dart';
 import '../widgets/glass_card.dart';
 import 'detail_page.dart';
 import 'journals_page.dart';
@@ -19,7 +20,7 @@ class JournalDetailPage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'Chi tiết Tạp chí',
+          'journal_detail'.tr(),
           style: GoogleFonts.outfit(fontWeight: FontWeight.bold),
         ),
         leading: IconButton(
@@ -48,7 +49,14 @@ class JournalDetailPage extends StatelessWidget {
                 borderColor: const Color(0xFF80CBC4).withOpacity(0.3),
                 child: Row(
                   children: [
-                    const Icon(Icons.menu_book_rounded, color: Color(0xFF80CBC4), size: 32),
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: const Color(0xFF80CBC4).withOpacity(0.1),
+                      ),
+                      child: const Icon(Icons.menu_book_rounded, color: Color(0xFF80CBC4), size: 28),
+                    ),
                     const SizedBox(width: 14),
                     Expanded(
                       child: Text(
@@ -68,25 +76,25 @@ class JournalDetailPage extends StatelessWidget {
               // Khối chỉ số đo lường chi tiết
               Row(
                 children: [
-                  _buildStatBox('Tổng bài báo', journal.count.toString(), Icons.article_rounded),
+                  _buildStatBox('total_publications'.tr(), journal.count.toString(), Icons.article_rounded),
                   const SizedBox(width: 10),
-                  _buildStatBox('Tổng trích dẫn', journal.totalCitations.toString(), Icons.star_rounded),
+                  _buildStatBox('total_citations'.tr(), journal.totalCitations.toString(), Icons.star_rounded),
                   const SizedBox(width: 10),
-                  _buildStatBox('Trích dẫn TB', journal.avgCitations.toStringAsFixed(1), Icons.insights_rounded),
+                  _buildStatBox('avg_citations_short'.tr(), journal.avgCitations.toStringAsFixed(1), Icons.insights_rounded),
                 ],
               ),
               const SizedBox(height: 28),
 
               // Danh sách bài báo thuộc tạp chí này
               Text(
-                'Bài báo liên quan (${journal.publications.length})',
+                '${'related_publications'.tr()} (${journal.publications.length})',
                 style: GoogleFonts.outfit(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
                   color: Colors.white,
                 ),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
 
               ListView.builder(
                 shrinkWrap: true,
@@ -95,38 +103,54 @@ class JournalDetailPage extends StatelessWidget {
                 itemBuilder: (context, index) {
                   final paper = journal.publications[index];
                   return Container(
-                    margin: const EdgeInsets.only(bottom: 10),
+                    margin: const EdgeInsets.only(bottom: 12),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.06),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.white.withOpacity(0.1)),
+                      color: Colors.white.withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.white.withOpacity(0.08)),
                     ),
                     child: ListTile(
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                       title: Text(
                         paper.title,
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                        style: GoogleFonts.outfit(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
                       subtitle: Padding(
-                        padding: const EdgeInsets.only(top: 4.0),
+                        padding: const EdgeInsets.only(top: 6.0),
                         child: Text(
                           '${paper.authors.join(', ')} • ${paper.publicationYear}',
-                          style: const TextStyle(color: Colors.white54, fontSize: 11),
+                          style: GoogleFonts.inter(color: Colors.white54, fontSize: 11),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
                       trailing: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                         decoration: BoxDecoration(
                           color: const Color(0xFF80CBC4).withOpacity(0.15),
                           borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: const Color(0xFF80CBC4).withOpacity(0.25)),
                         ),
-                        child: Text(
-                          '${paper.citationCount} 🌟',
-                          style: const TextStyle(color: Color(0xFF80CBC4), fontSize: 11, fontWeight: FontWeight.bold),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              '${paper.citationCount}',
+                              style: GoogleFonts.inter(
+                                color: const Color(0xFF80CBC4),
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            const Icon(Icons.star_rounded, color: Color(0xFF80CBC4), size: 12),
+                          ],
                         ),
                       ),
                       onTap: () {
@@ -160,19 +184,26 @@ class JournalDetailPage extends StatelessWidget {
   Widget _buildStatBox(String label, String value, IconData icon) {
     return Expanded(
       child: GlassCard(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 14),
         child: Column(
           children: [
-            Icon(icon, color: const Color(0xFF80CBC4), size: 18),
-            const SizedBox(height: 6),
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xFF80CBC4).withOpacity(0.1),
+              ),
+              child: Icon(icon, color: const Color(0xFF80CBC4), size: 16),
+            ),
+            const SizedBox(height: 8),
             Text(
               value,
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+              style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const SizedBox(height: 4),
             Text(
               label,
-              style: const TextStyle(color: Colors.white60, fontSize: 10),
+              style: GoogleFonts.inter(color: Colors.white60, fontSize: 10, fontWeight: FontWeight.w500),
               textAlign: TextAlign.center,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,

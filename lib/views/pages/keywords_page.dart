@@ -52,84 +52,89 @@ class _KeywordsPageState extends State<KeywordsPage> {
                 : [const Color(0xFF235C5C), const Color(0xFF1A4747)],
           ),
         ),
-        child: ValueListenableBuilder<List<Publication>>(
-          valueListenable: SharedState.filteredPublicationsNotifier,
-          builder: (context, publications, _) {
-            return ListenableBuilder(
-              listenable: MockFirebaseService.instance,
-              builder: (context, _) {
-                if (publications.isEmpty) {
-                  return _buildEmptyState();
-                }
-
-                // 1. Phân tích trích xuất tất cả Concepts/Topics làm Keyword và tính tần số
-                final Map<String, List<Publication>> keywordGroup = {};
-                for (final p in publications) {
-                  final List<String> allKeys = [...p.concepts, ...p.topics];
-                  for (final key in allKeys) {
-                    final normalizedKey = key.trim();
-                    if (normalizedKey.isNotEmpty) {
-                      keywordGroup.putIfAbsent(normalizedKey, () => []).add(p);
+        child: ListenableBuilder(
+          listenable: SharedState.languageNotifier,
+          builder: (context, _) {
+            return ValueListenableBuilder<List<Publication>>(
+              valueListenable: SharedState.filteredPublicationsNotifier,
+              builder: (context, publications, _) {
+                return ListenableBuilder(
+                  listenable: MockFirebaseService.instance,
+                  builder: (context, _) {
+                    if (publications.isEmpty) {
+                      return _buildEmptyState();
                     }
-                  }
-                }
 
-                // 2. Sắp xếp danh sách theo số lượng bài viết giảm dần
-                final List<KeywordStats> allStats = keywordGroup.entries.map((entry) {
-                  return KeywordStats(
-                    keyword: entry.key,
-                    count: entry.value.length,
-                    publications: entry.value,
-                  );
-                }).toList()
-                  ..sort((a, b) => b.count.compareTo(a.count));
+                    // 1. Phân tích trích xuất tất cả Concepts/Topics làm Keyword và tính tần số
+                    final Map<String, List<Publication>> keywordGroup = {};
+                    for (final p in publications) {
+                      final List<String> allKeys = [...p.concepts, ...p.topics];
+                      for (final key in allKeys) {
+                        final normalizedKey = key.trim();
+                        if (normalizedKey.isNotEmpty) {
+                          keywordGroup.putIfAbsent(normalizedKey, () => []).add(p);
+                        }
+                      }
+                    }
 
-                // 3. Giới hạn số lượng từ khóa hiển thị bằng Remote Config
-                final limit = MockFirebaseService.instance.maxKeywordsDisplayed;
-                final displayedStats = allStats.take(limit).toList();
+                    // 2. Sắp xếp danh sách theo số lượng bài viết giảm dần
+                    final List<KeywordStats> allStats = keywordGroup.entries.map((entry) {
+                      return KeywordStats(
+                        keyword: entry.key,
+                        count: entry.value.length,
+                        publications: entry.value,
+                      );
+                    }).toList()
+                      ..sort((a, b) => b.count.compareTo(a.count));
 
-                // Phân chia: 50% top đầu làm "Most Frequent", số còn lại làm "Trending"
-                final midpoint = (displayedStats.length / 2).ceil();
-                final frequentKeywords = displayedStats.take(midpoint).toList();
-                final trendingKeywords = displayedStats.skip(midpoint).toList();
+                    // 3. Giới hạn số lượng từ khóa hiển thị bằng Remote Config
+                    final limit = MockFirebaseService.instance.maxKeywordsDisplayed;
+                    final displayedStats = allStats.take(limit).toList();
 
-                return SingleChildScrollView(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Tiêu đề số liệu từ khóa
-                      _buildHeaderStats(
-                        allStats.length,
-                        SharedState.totalPublicationsCountNotifier.value > 0
-                            ? SharedState.totalPublicationsCountNotifier.value
-                            : publications.length,
+                    // Phân chia: 50% top đầu làm "Most Frequent", số còn lại làm "Trending"
+                    final midpoint = (displayedStats.length / 2).ceil();
+                    final frequentKeywords = displayedStats.take(midpoint).toList();
+                    final trendingKeywords = displayedStats.skip(midpoint).toList();
+
+                    return SingleChildScrollView(
+                      padding: const EdgeInsets.only(left: 16.0, right: 16.0, top: 16.0, bottom: 80.0), // Tránh đè lên thanh bottom navigation
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Tiêu đề số liệu từ khóa
+                          _buildHeaderStats(
+                            allStats.length,
+                            SharedState.totalPublicationsCountNotifier.value > 0
+                                ? SharedState.totalPublicationsCountNotifier.value
+                                : publications.length,
+                          ),
+                          const SizedBox(height: 24),
+
+                          // Biểu đồ tần suất Từ khóa
+                          Text(
+                            'keyword_frequency_chart'.tr(),
+                            style: GoogleFonts.outfit(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          _buildFrequencyChart(displayedStats.take(6).toList()),
+                          const SizedBox(height: 24),
+
+                          // Section 1: Most Frequent Keywords
+                          _buildKeywordsSection('most_frequent_keywords'.tr(), frequentKeywords, limit, allStats.length),
+                          const SizedBox(height: 24),
+
+                          // Section 2: Trending Keywords
+                          if (trendingKeywords.isNotEmpty) ...[
+                            _buildKeywordsSection('trending_keywords'.tr(), trendingKeywords, limit, allStats.length, isTrending: true),
+                          ],
+                        ],
                       ),
-                      const SizedBox(height: 24),
-
-                      // Biểu đồ tần suất Từ khóa
-                      Text(
-                        'Biểu đồ tần suất xuất hiện',
-                        style: GoogleFonts.outfit(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      _buildFrequencyChart(displayedStats.take(6).toList()),
-                      const SizedBox(height: 24),
-
-                      // Section 1: Most Frequent Keywords
-                      _buildKeywordsSection('Từ khóa phổ biến nhất', frequentKeywords, limit, allStats.length),
-                      const SizedBox(height: 20),
-
-                      // Section 2: Trending Keywords
-                      if (trendingKeywords.isNotEmpty) ...[
-                        _buildKeywordsSection('Từ khóa đang thịnh hành (Trending)', trendingKeywords, limit, allStats.length, isTrending: true),
-                      ],
-                    ],
-                  ),
+                    );
+                  },
                 );
               },
             );
@@ -168,15 +173,6 @@ class _KeywordsPageState extends State<KeywordsPage> {
             Colors.white.withOpacity(0.03),
           ],
         ),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.12)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -201,7 +197,7 @@ class _KeywordsPageState extends State<KeywordsPage> {
                   ),
                 ),
                 const SizedBox(height: 2),
-                const Text('Tổng số từ khóa', style: TextStyle(color: Colors.white60, fontSize: 11)),
+                Text('total_keywords'.tr(), style: const TextStyle(color: Colors.white60, fontSize: 11)),
               ],
             ),
           ),
@@ -226,7 +222,7 @@ class _KeywordsPageState extends State<KeywordsPage> {
                   ),
                 ),
                 const SizedBox(height: 2),
-                const Text('Tổng số bài báo', style: TextStyle(color: Colors.white60, fontSize: 11)),
+                Text('total_publications'.tr(), style: const TextStyle(color: Colors.white60, fontSize: 11)),
               ],
             ),
           ),
@@ -246,100 +242,116 @@ class _KeywordsPageState extends State<KeywordsPage> {
       borderColor: Colors.white.withOpacity(0.12),
       borderWidth: 1.0,
       child: SizedBox(
-        height: 180,
-        child: BarChart(
-          BarChartData(
-            alignment: BarChartAlignment.spaceAround,
-            maxY: maxVal == 0 ? 1.0 : maxVal * 1.2,
-            barTouchData: BarTouchData(
-              touchTooltipData: BarTouchTooltipData(
-                getTooltipColor: (group) => const Color(0xFF0F364A).withOpacity(0.9),
-                tooltipBorder: BorderSide(color: Colors.white.withOpacity(0.15), width: 1.0),
-                tooltipBorderRadius: BorderRadius.circular(8),
-                getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                  return BarTooltipItem(
-                    '${topList[groupIndex].keyword}\n',
-                    GoogleFonts.outfit(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
-                    ),
-                    children: <TextSpan>[
-                      TextSpan(
-                        text: '${rod.toY.toInt()} ${'articles'.tr()}',
-                        style: GoogleFonts.inter(
-                          color: const Color(0xFF80CBC4),
-                          fontWeight: FontWeight.w600,
-                          fontSize: 11,
+        height: 210, // Tăng chiều cao để tránh tooltip bị cắt bởi ScrollView
+        child: Padding(
+          padding: const EdgeInsets.only(top: 24.0), // Chừa khoảng trống phía trên cho tooltip
+          child: BarChart(
+            BarChartData(
+              alignment: BarChartAlignment.spaceAround,
+              maxY: maxVal == 0 ? 1.0 : maxVal * 1.25,
+              barTouchData: BarTouchData(
+                touchTooltipData: BarTouchTooltipData(
+                  getTooltipColor: (group) => const Color(0xFF0F364A).withOpacity(0.9),
+                  tooltipBorder: BorderSide(color: Colors.white.withOpacity(0.15), width: 1.0),
+                  tooltipBorderRadius: BorderRadius.circular(8),
+                  fitInsideHorizontally: true,
+                  fitInsideVertically: true,
+                  getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                    return BarTooltipItem(
+                      '${topList[groupIndex].keyword}\n',
+                      GoogleFonts.outfit(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                      children: <TextSpan>[
+                        TextSpan(
+                          text: '${rod.toY.toInt()} ${'articles'.tr()}',
+                          style: GoogleFonts.inter(
+                            color: const Color(0xFF80CBC4),
+                            fontWeight: FontWeight.w600,
+                            fontSize: 11,
+                          ),
                         ),
-                      ),
-                    ],
-                  );
-                },
-              ),
-            ),
-            gridData: FlGridData(
-              show: true,
-              getDrawingHorizontalLine: (_) => FlLine(
-                color: Colors.white.withOpacity(0.08),
-                strokeWidth: 1,
-              ),
-              drawVerticalLine: false,
-            ),
-            borderData: FlBorderData(show: false),
-            titlesData: FlTitlesData(
-              topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-              rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-              leftTitles: AxisTitles(
-                sideTitles: SideTitles(
-                  showTitles: true,
-                  reservedSize: 28,
-                  getTitlesWidget: (val, meta) => Text(
-                    val.toInt().toString(),
-                    style: const TextStyle(color: Colors.white54, fontSize: 10),
-                  ),
-                ),
-              ),
-              bottomTitles: AxisTitles(
-                sideTitles: SideTitles(
-                  showTitles: true,
-                  getTitlesWidget: (val, meta) {
-                    final index = val.toInt();
-                    if (index < 0 || index >= topList.length) return const SizedBox.shrink();
-                    final name = topList[index].keyword;
-                    final shortName = name.length > 8 ? '${name.substring(0, 6)}..' : name;
-                    return Padding(
-                      padding: const EdgeInsets.only(top: 6.0),
-                      child: Text(
-                        shortName,
-                        style: const TextStyle(color: Colors.white54, fontSize: 9),
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                      ],
                     );
                   },
                 ),
               ),
-            ),
-            barGroups: List.generate(topList.length, (i) {
-              return BarChartGroupData(
-                x: i,
-                barRods: [
-                  BarChartRodData(
-                    toY: topList[i].count.toDouble(),
-                    width: 12,
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
-                    gradient: const LinearGradient(
-                      begin: Alignment.bottomCenter,
-                      end: Alignment.topCenter,
-                      colors: [
-                        Color(0xFF00ACC1),
-                        Color(0xFF80CBC4),
-                      ],
-                    ),
+              gridData: FlGridData(
+                show: true,
+                getDrawingHorizontalLine: (_) => FlLine(
+                  color: Colors.white.withOpacity(0.08),
+                  strokeWidth: 1,
+                ),
+                drawVerticalLine: false,
+              ),
+              borderData: FlBorderData(show: false),
+              titlesData: FlTitlesData(
+                topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                leftTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    reservedSize: 42,
+                    getTitlesWidget: (val, meta) {
+                      // Ẩn nhãn trùng lặp ở đỉnh biểu đồ
+                      if (val == meta.max || val.toInt() >= meta.max.toInt()) {
+                        return const SizedBox.shrink();
+                      }
+                      return SideTitleWidget(
+                        meta: meta,
+                        space: 4,
+                        child: Text(
+                          val.toInt().toString(),
+                          style: const TextStyle(color: Colors.white54, fontSize: 10),
+                        ),
+                      );
+                    },
                   ),
-                ],
-              );
-            }),
+                ),
+                bottomTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    getTitlesWidget: (val, meta) {
+                      final index = val.toInt();
+                      if (index < 0 || index >= topList.length) return const SizedBox.shrink();
+                      final name = topList[index].keyword;
+                      final shortName = name.length > 8 ? '${name.substring(0, 6)}..' : name;
+                      return SideTitleWidget(
+                        meta: meta,
+                        space: 4,
+                        child: Text(
+                          shortName,
+                          style: const TextStyle(color: Colors.white54, fontSize: 9),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+              barGroups: List.generate(topList.length, (i) {
+                return BarChartGroupData(
+                  x: i,
+                  barRods: [
+                    BarChartRodData(
+                      toY: topList[i].count.toDouble(),
+                      width: 12,
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+                      gradient: const LinearGradient(
+                        begin: Alignment.bottomCenter,
+                        end: Alignment.topCenter,
+                        colors: [
+                          Color(0xFF00ACC1),
+                          Color(0xFF80CBC4),
+                        ],
+                      ),
+                    ),
+                  ],
+                );
+              }),
+            ),
           ),
         ),
       ),
@@ -403,6 +415,9 @@ class _KeywordsPageState extends State<KeywordsPage> {
                 },
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  constraints: BoxConstraints(
+                    maxWidth: MediaQuery.of(context).size.width - 40,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.06),
                     borderRadius: BorderRadius.circular(16),
@@ -427,13 +442,27 @@ class _KeywordsPageState extends State<KeywordsPage> {
                         color: accentColor,
                       ),
                       const SizedBox(width: 6),
+                      Flexible(
+                        child: Text(
+                          item.keyword,
+                          style: GoogleFonts.inter(
+                            textStyle: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
                       Text(
-                        '${item.keyword} (${item.count})',
+                        '(${item.count})',
                         style: GoogleFonts.inter(
-                          textStyle: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
+                          textStyle: TextStyle(
+                            color: accentColor.withOpacity(0.8),
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
                       ),

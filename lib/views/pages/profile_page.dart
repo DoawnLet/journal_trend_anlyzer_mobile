@@ -86,7 +86,7 @@ class _ProfilePageState extends State<ProfilePage> {
       final file = File(pdfPath);
       await file.writeAsBytes(await pdf.save());
 
-      // 3. Tải tệp lên Mock Firebase Storage
+      // 3. Tải tệp lên Firebase Storage (gọi service tích hợp thực tế/mock)
       final downloadUrl = await MockFirebaseService.instance.uploadPdfReport(
         topic,
         await file.readAsBytes(),
@@ -99,7 +99,7 @@ class _ProfilePageState extends State<ProfilePage> {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('Báo cáo PDF đã được xuất và tải lên Firebase Storage thành công!'),
+            content: Text('upload_success'.tr()),
             backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
           ),
@@ -109,7 +109,7 @@ class _ProfilePageState extends State<ProfilePage> {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Lỗi xuất báo cáo: $e'),
+            content: Text('${'error_loading_data'.tr()}: $e'),
             backgroundColor: AppColors.error,
             behavior: SnackBarBehavior.floating,
           ),
@@ -138,7 +138,6 @@ class _ProfilePageState extends State<ProfilePage> {
       }
     ];
 
-    // Chọn ngẫu nhiên một mẫu thông báo
     final template = (templates..shuffle()).first;
     MockFirebaseService.instance.simulateIncomingNotification(
       template['title']!,
@@ -147,7 +146,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Đã nhận thông báo đẩy: ${template['title']}'),
+        content: Text('incoming_notification_alert'.tr().replaceAll('{title}', template['title']!)),
         backgroundColor: AppColors.info,
         behavior: SnackBarBehavior.floating,
       ),
@@ -157,20 +156,18 @@ class _ProfilePageState extends State<ProfilePage> {
   Future<void> _openDownloadUrl(String url) async {
     final uri = Uri.parse(url);
     try {
-      // Vì là mock URL nên ta dùng link mock mở trình duyệt ngoài
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     } catch (_) {
-      // Fallback nếu không mở được link mock
       if (mounted) {
         showDialog(
           context: context,
           builder: (context) => AlertDialog(
-            title: const Text('Tải báo cáo PDF'),
-            content: SelectableText('Đường dẫn tải báo cáo:\n\n$url'),
+            title: Text('firebase_storage'.tr()),
+            content: SelectableText('URL:\n\n$url'),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: const Text('Đóng'),
+                child: Text('close_button'.tr()),
               ),
             ],
           ),
@@ -205,40 +202,44 @@ class _ProfilePageState extends State<ProfilePage> {
           ),
         ),
         child: ListenableBuilder(
-          listenable: MockFirebaseService.instance,
+          listenable: SharedState.languageNotifier,
           builder: (context, _) {
-            final fService = MockFirebaseService.instance;
+            return ListenableBuilder(
+              listenable: MockFirebaseService.instance,
+              builder: (context, _) {
+                final fService = MockFirebaseService.instance;
 
-            return SingleChildScrollView(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // 1. Thông tin người dùng (User Card)
-                  _buildUserCard(user, auth, theme),
-                  const SizedBox(height: 20),
+                return SingleChildScrollView(
+                  padding: const EdgeInsets.only(left: 16.0, right: 16.0, top: 16.0, bottom: 80.0), // Chừa khoảng trống bottom bar
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // 1. Thông tin người dùng (User Card)
+                      _buildUserCard(user, auth, theme),
+                      const SizedBox(height: 20),
 
-                  // 2. Cấu hình từ xa (Remote Config Panel)
-                  _buildRemoteConfigCard(fService, theme),
-                  const SizedBox(height: 20),
+                      // 2. Cấu hình từ xa (Remote Config Panel)
+                      _buildRemoteConfigCard(fService, theme),
+                      const SizedBox(height: 20),
 
-                  // 3. Xuất báo cáo và Storage (Report Export Card)
-                  _buildExportReportCard(fService, theme),
-                  const SizedBox(height: 20),
+                      // 3. Xuất báo cáo và Storage (Report Export Card)
+                      _buildExportReportCard(fService, theme),
+                      const SizedBox(height: 20),
 
-                  // 4. Theo dõi lỗi (Crashlytics Card)
-                  _buildCrashlyticsCard(fService, theme),
-                  const SizedBox(height: 20),
+                      // 4. Theo dõi lỗi (Crashlytics Card)
+                      _buildCrashlyticsCard(fService, theme),
+                      const SizedBox(height: 20),
 
-                  // 5. Trung tâm thông báo (Notification Center Card)
-                  _buildNotificationCenterCard(fService, theme),
-                  const SizedBox(height: 20),
+                      // 5. Trung tâm thông báo (Notification Center Card)
+                      _buildNotificationCenterCard(fService, theme),
+                      const SizedBox(height: 20),
 
-                  // 6. Nhật ký sự kiện Analytics (Debug Event Log)
-                  _buildAnalyticsLogsCard(fService, theme),
-                  const SizedBox(height: 24),
-                ],
-              ),
+                      // 6. Nhật ký sự kiện Analytics (Debug Event Log)
+                      _buildAnalyticsLogsCard(fService, theme),
+                    ],
+                  ),
+                );
+              },
             );
           },
         ),
@@ -265,11 +266,12 @@ class _ProfilePageState extends State<ProfilePage> {
               children: [
                 Text(
                   user?.displayName ?? 'Nguyen Van A',
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                  style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
                 ),
+                const SizedBox(height: 4),
                 Text(
                   user?.email ?? 'nguyenvana.prm393@gmail.com',
-                  style: const TextStyle(color: Colors.white60, fontSize: 12),
+                  style: GoogleFonts.inter(color: Colors.white60, fontSize: 12),
                   overflow: TextOverflow.ellipsis,
                 ),
               ],
@@ -277,7 +279,7 @@ class _ProfilePageState extends State<ProfilePage> {
           ),
           IconButton(
             icon: const Icon(Icons.logout_rounded, color: Colors.redAccent),
-            tooltip: 'Đăng xuất',
+            tooltip: 'sign_out'.tr(),
             onPressed: () {
               auth.signOut();
             },
@@ -308,14 +310,14 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
               const SizedBox(width: 10),
               Text(
-                'Firebase Remote Config',
+                'firebase_remote_config'.tr(),
                 style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 15),
               ),
             ],
           ),
           const SizedBox(height: 10),
           Text(
-            'Giả lập cấu hình hiển thị danh sách từ xa của Firebase Console.',
+            'remote_config_desc'.tr(),
             style: GoogleFonts.inter(color: Colors.white60, fontSize: 11),
           ),
           const SizedBox(height: 20),
@@ -326,7 +328,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Tạp chí tối đa hiển thị:',
+                    'max_journals_to_display'.tr(),
                     style: GoogleFonts.inter(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w600),
                   ),
                   Text(
@@ -366,7 +368,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Từ khóa tối đa hiển thị:',
+                    'max_keywords_to_display'.tr(),
                     style: GoogleFonts.inter(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w600),
                   ),
                   Text(
@@ -424,30 +426,33 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
               const SizedBox(width: 10),
               Text(
-                'Firebase Storage',
+                'firebase_storage'.tr(),
                 style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 15),
               ),
             ],
           ),
           const SizedBox(height: 10),
           Text(
-            'Tải dữ liệu phân tích đề tài hiện tại về máy dạng PDF và lưu trữ trên Firebase Cloud Storage.',
+            'storage_desc'.tr(),
             style: GoogleFonts.inter(color: Colors.white60, fontSize: 11),
           ),
           const SizedBox(height: 20),
           if (_isExporting)
-            const Center(
+            Center(
               child: Padding(
-                padding: EdgeInsets.symmetric(vertical: 8.0),
+                padding: const EdgeInsets.symmetric(vertical: 8.0),
                 child: Column(
                   children: [
-                    SizedBox(
+                    const SizedBox(
                       width: 24,
                       height: 24,
                       child: CircularProgressIndicator(color: Color(0xFF2196F3), strokeWidth: 2.5),
                     ),
-                    SizedBox(height: 12),
-                    Text('Đang tạo báo cáo & tải lên...', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                    const SizedBox(height: 12),
+                    Text(
+                      'exporting_and_uploading'.tr(),
+                      style: GoogleFonts.inter(color: Colors.white70, fontSize: 12),
+                    ),
                   ],
                 ),
               ),
@@ -458,7 +463,7 @@ class _ProfilePageState extends State<ProfilePage> {
               child: ElevatedButton.icon(
                 onPressed: () => _exportPdfReport(context),
                 icon: const Icon(Icons.picture_as_pdf_rounded, size: 16),
-                label: const Text('Xuất báo cáo PDF'),
+                label: Text('export_pdf_report'.tr()),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF2196F3),
                   foregroundColor: Colors.white,
@@ -475,7 +480,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   const Icon(Icons.check_circle_rounded, color: Colors.greenAccent, size: 14),
                   const SizedBox(width: 6),
                   Text(
-                    'Đã tải lên thành công:',
+                    'upload_success'.tr(),
                     style: GoogleFonts.inter(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold),
                   ),
                 ],
@@ -548,7 +553,7 @@ class _ProfilePageState extends State<ProfilePage> {
           ),
           const SizedBox(height: 10),
           Text(
-            'Mô phỏng lỗi ngoại lệ không đồng bộ hoặc kích hoạt sập ứng dụng để kiểm thử báo cáo sập tự động.',
+            'crashlytics_desc'.tr(),
             style: GoogleFonts.inter(color: Colors.white60, fontSize: 11),
           ),
           const SizedBox(height: 20),
@@ -558,12 +563,12 @@ class _ProfilePageState extends State<ProfilePage> {
                 child: OutlinedButton(
                   onPressed: () {
                     try {
-                      throw StateError('Simulated Null Pointer Exception');
+                      throw StateError('Simulated Handled Exception Log');
                     } catch (e, stack) {
                       service.logHandledException(e, stack);
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: const Text('Đã gửi báo cáo lỗi handled thành công!'),
+                          content: Text('sent_handled_success'.tr()),
                           backgroundColor: AppColors.success,
                           behavior: SnackBarBehavior.floating,
                         ),
@@ -576,7 +581,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
-                  child: Text('Handled Exception', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600)),
+                  child: Text('handled_exception'.tr(), style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600)),
                 ),
               ),
               const SizedBox(width: 10),
@@ -592,7 +597,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                     elevation: 2,
                   ),
-                  child: Text('Trigger Test Crash', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold)),
+                  child: Text('trigger_test_crash'.tr(), style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold)),
                 ),
               ),
             ],
@@ -604,7 +609,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 const Icon(Icons.check_circle_outline, color: Colors.redAccent, size: 12),
                 const SizedBox(width: 6),
                 Text(
-                  'Số lỗi đã được ghi nhận: ${service.loggedExceptions.length}',
+                  'recorded_exceptions_count'.tr().replaceAll('{count}', service.loggedExceptions.length.toString()),
                   style: GoogleFonts.inter(color: Colors.white54, fontSize: 11, fontStyle: FontStyle.italic),
                 ),
               ],
@@ -639,21 +644,21 @@ class _ProfilePageState extends State<ProfilePage> {
                   ),
                   const SizedBox(width: 10),
                   Text(
-                    'Notification Center (FCM)',
+                    'notification_center_fcm'.tr(),
                     style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 15),
                   ),
                 ],
               ),
               IconButton(
                 icon: const Icon(Icons.add_alert_rounded, color: Color(0xFFFF9800), size: 20),
-                tooltip: 'Mô phỏng thông báo mới',
+                tooltip: 'simulate_incoming_notification'.tr(),
                 onPressed: _simulatePushNotification,
               ),
             ],
           ),
           const SizedBox(height: 6),
           Text(
-            'Trung tâm hiển thị thông báo đẩy được gửi trực tuyến thông qua Firebase Cloud Messaging.',
+            'fcm_desc'.tr(),
             style: GoogleFonts.inter(color: Colors.white60, fontSize: 11),
           ),
           const SizedBox(height: 16),
@@ -667,7 +672,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 border: Border.all(color: Colors.white.withOpacity(0.04)),
               ),
               child: Center(
-                child: Text('Không có thông báo nào.', style: GoogleFonts.inter(color: Colors.white30, fontSize: 13)),
+                child: Text('no_notifications'.tr(), style: GoogleFonts.inter(color: Colors.white30, fontSize: 13)),
               ),
             )
           else
@@ -677,45 +682,96 @@ class _ProfilePageState extends State<ProfilePage> {
               itemCount: service.notifications.length > 3 ? 3 : service.notifications.length,
               itemBuilder: (context, index) {
                 final notif = service.notifications[index];
-                return Container(
+                return Card(
                   margin: const EdgeInsets.only(bottom: 10),
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.04),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.white.withOpacity(0.06)),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              notif.title,
-                              style: GoogleFonts.outfit(
-                                textStyle: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
-                              ),
-                            ),
+                  color: Colors.transparent,
+                  elevation: 0,
+                  child: InkWell(
+                    onTap: () {
+                      // Phân tích chủ đề từ tiêu đề/nội dung thông báo để chuyển hướng tìm kiếm
+                      String topic = '';
+                      final textToSearch = '${notif.title} ${notif.body}'.toLowerCase();
+                      if (textToSearch.contains('deep learning')) {
+                        topic = 'Deep Learning';
+                      } else if (textToSearch.contains('quantum')) {
+                        topic = 'Quantum Computing';
+                      } else if (textToSearch.contains('renewable')) {
+                        topic = 'Renewable Energy';
+                      } else if (textToSearch.contains('artificial intelligence')) {
+                        topic = 'Artificial Intelligence';
+                      }
+
+                      if (topic.isNotEmpty) {
+                        // Thiết lập từ khóa tìm kiếm toàn cục và chuyển hướng về tab Trang chủ (Index 0)
+                        SharedState.activeQueryNotifier.value = topic;
+                        SharedState.setKeyword(topic);
+                        SharedState.activeTabNotifier.value = 0;
+
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('${'search_topic'.tr()}: $topic'),
+                            backgroundColor: AppColors.success,
+                            behavior: SnackBarBehavior.floating,
                           ),
-                          const SizedBox(width: 8),
+                        );
+                      } else {
+                        // Hộp thoại hiển thị chi tiết nếu là thông báo thường
+                        showDialog(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: Text(notif.title),
+                            content: Text(notif.body),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context),
+                                child: Text('close_button'.tr()),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+                    },
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.04),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.white.withOpacity(0.06)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  notif.title,
+                                  style: GoogleFonts.outfit(
+                                    textStyle: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                '${notif.timestamp.hour.toString().padLeft(2, '0')}:${notif.timestamp.minute.toString().padLeft(2, '0')}',
+                                style: GoogleFonts.inter(
+                                  textStyle: const TextStyle(color: Colors.white38, fontSize: 10, fontWeight: FontWeight.w600),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
                           Text(
-                            '${notif.timestamp.hour.toString().padLeft(2, '0')}:${notif.timestamp.minute.toString().padLeft(2, '0')}',
+                            notif.body,
                             style: GoogleFonts.inter(
-                              textStyle: const TextStyle(color: Colors.white38, fontSize: 10, fontWeight: FontWeight.w600),
+                              textStyle: const TextStyle(color: Colors.white60, fontSize: 11, height: 1.4),
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 6),
-                      Text(
-                        notif.body,
-                        style: GoogleFonts.inter(
-                          textStyle: const TextStyle(color: Colors.white60, fontSize: 11, height: 1.4),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 );
               },
@@ -745,14 +801,14 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
               const SizedBox(width: 10),
               Text(
-                'Debug Analytics Logs (Terminal)',
+                'debug_analytics_logs'.tr(),
                 style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 14),
               ),
             ],
           ),
           const SizedBox(height: 8),
           Text(
-            'Nhật ký các sự kiện thời gian thực đã gửi lên Firebase Analytics (dùng làm minh chứng dự án).',
+            'analytics_desc'.tr(),
             style: GoogleFonts.inter(color: Colors.white60, fontSize: 11),
           ),
           const SizedBox(height: 16),
