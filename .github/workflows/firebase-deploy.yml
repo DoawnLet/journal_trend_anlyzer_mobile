@@ -1,0 +1,38 @@
+name: Deploy Cloud Functions to Firebase on Push
+
+on:
+  push:
+    branches:
+      - duy          # Tên nhánh Git chính của bạn
+    paths:
+      - 'backend/**' # Chỉ kích hoạt tự động deploy khi có thay đổi trong thư mục backend
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Tải code từ Github về máy ảo của Github Actions
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+
+      # 2. Cài đặt môi trường Node.js phiên bản 22
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # 3. Cài đặt các thư viện phụ thuộc của Cloud Functions
+      - name: Install Dependencies
+        run: |
+          cd backend/functions
+          npm install
+
+      # 4. Biên dịch và Deploy lên Firebase
+      - name: Deploy to Firebase
+        uses: w9jds/firebase-action@v2.2.0
+        with:
+          args: deploy --only functions
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+          PROJECT_PATH: './backend' # Trỏ tới thư mục chứa cấu hình firebase.json của bạn
