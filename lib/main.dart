@@ -2,13 +2,13 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
-import 'core/theme/app_theme.dart';
-import 'core/utils/error_middleware.dart';
-import 'views/pages/login_page.dart';
-import 'views/state_management/auth_notifier.dart';
-import 'views/state_management/shared_state.dart';
-import 'widget_tree.dart';
-import 'core/services/mock_firebase_service.dart';
+import 'package:journal_trend_analysis_mb/theme/app_theme.dart';
+import 'package:journal_trend_analysis_mb/utils/error_middleware.dart';
+import 'package:journal_trend_analysis_mb/screens/login_page.dart';
+import 'package:journal_trend_analysis_mb/viewmodels/auth_notifier.dart';
+import 'package:journal_trend_analysis_mb/viewmodels/shared_state.dart';
+import 'package:journal_trend_analysis_mb/widget_tree.dart';
+import 'package:journal_trend_analysis_mb/services/mock_firebase_service.dart';
 
 Future<void> main() async {
   // Đảm bảo Flutter framework được khởi tạo hoàn chỉnh trước khi load assets
