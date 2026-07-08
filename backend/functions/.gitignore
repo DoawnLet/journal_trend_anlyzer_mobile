@@ -1,0 +1,9 @@
+# Compiled JavaScript files
+lib/
+
+# Dependency directories
+node_modules/
+
+# Firebase debug logs
+firebase-debug.log
+firestore-debug.log

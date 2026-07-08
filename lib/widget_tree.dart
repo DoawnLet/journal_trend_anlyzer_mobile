@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
-import 'views/pages/home_page.dart';
-import 'views/pages/journals_page.dart';
-import 'views/pages/keywords_page.dart';
-import 'views/pages/profile_page.dart';
-import 'views/state_management/home_notifier.dart';
-import 'views/state_management/search_notifier.dart';
-import 'views/state_management/trend_notifier.dart';
-import 'views/state_management/shared_state.dart';
-import 'views/widgets/custom_bottom_nav_bar.dart';
+import 'package:journal_trend_analysis_mb/screens/home_page.dart';
+import 'package:journal_trend_analysis_mb/screens/journals_page.dart';
+import 'package:journal_trend_analysis_mb/screens/keywords_page.dart';
+import 'package:journal_trend_analysis_mb/screens/profile_page.dart';
+import 'package:journal_trend_analysis_mb/viewmodels/home_notifier.dart';
+import 'package:journal_trend_analysis_mb/viewmodels/search_notifier.dart';
+import 'package:journal_trend_analysis_mb/viewmodels/trend_notifier.dart';
+import 'package:journal_trend_analysis_mb/viewmodels/shared_state.dart';
+import 'package:journal_trend_analysis_mb/widgets/custom_bottom_nav_bar.dart';
 
 /// Trang quản lý điều hướng / Cấu trúc widget chính của ứng dụng.
 /// Khởi tạo các Notifier điều khiển trạng thái và tích hợp thanh CustomBottomNavBar để phân chia màn hình.

@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:journal_trend_analysis_mb/views/pages/trend_page.dart';
-import 'package:journal_trend_analysis_mb/views/state_management/trend_notifier.dart';
-import 'package:journal_trend_analysis_mb/views/models/publication_model.dart';
-import 'package:journal_trend_analysis_mb/views/models/research_scope_model.dart';
-import 'package:journal_trend_analysis_mb/views/models/trend_rank_item_model.dart';
-import 'package:journal_trend_analysis_mb/views/services/trend_api_service.dart';
-import 'package:journal_trend_analysis_mb/views/state_management/shared_state.dart';
+import 'package:journal_trend_analysis_mb/screens/trend_page.dart';
+import 'package:journal_trend_analysis_mb/viewmodels/trend_notifier.dart';
+import 'package:journal_trend_analysis_mb/models/publication_model.dart';
+import 'package:journal_trend_analysis_mb/models/research_scope_model.dart';
+import 'package:journal_trend_analysis_mb/models/trend_rank_item_model.dart';
+import 'package:journal_trend_analysis_mb/services/trend_api_service.dart';
+import 'package:journal_trend_analysis_mb/viewmodels/shared_state.dart';
 
 class FakeTrendApiService implements TrendApiService {
   final List<Publication> publications = const [

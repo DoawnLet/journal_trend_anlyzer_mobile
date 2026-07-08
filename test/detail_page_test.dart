@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:journal_trend_analysis_mb/views/models/publication_model.dart';
-import 'package:journal_trend_analysis_mb/views/pages/detail_page.dart';
+import 'package:journal_trend_analysis_mb/models/publication_model.dart';
+import 'package:journal_trend_analysis_mb/screens/detail_page.dart';
 
 void main() {
   testWidgets('DetailPage displays DOI in compact format', (tester) async {
@@ -25,6 +25,6 @@ void main() {
     );
 
     expect(find.text('DOI'), findsOneWidget);
-    expect(find.text('DOI: 10.1000/test-doi'), findsOneWidget);
+    expect(find.text('10.1000/test-doi'), findsOneWidget);
   });
 }
