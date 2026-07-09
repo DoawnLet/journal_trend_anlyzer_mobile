@@ -155,6 +155,14 @@ class MockFirebaseService extends ChangeNotifier {
           sound: true,
         );
 
+        // Đăng ký nhận tin nhắn từ Topic chung
+        await messaging.subscribeToTopic("new_publications");
+        debugPrint('[FCM] Subscribed to topic: new_publications');
+
+        // Lấy và in FCM Token để kiểm tra
+        final token = await messaging.getToken();
+        debugPrint('[FCM] Token: $token');
+
         // Lắng nghe thông báo ở chế độ foreground
         FirebaseMessaging.onMessage.listen((RemoteMessage message) {
           final title = message.notification?.title ?? 'FCM Notification';
