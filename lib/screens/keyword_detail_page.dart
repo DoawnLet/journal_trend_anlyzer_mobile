@@ -16,16 +16,24 @@ class AuthorKeywordStats {
 }
 
 /// Màn hình Chi tiết Từ khóa (Keyword Detail Screen)
-class KeywordDetailPage extends StatelessWidget {
+class KeywordDetailPage extends StatefulWidget {
   final KeywordStats keywordStats;
 
   const KeywordDetailPage({super.key, required this.keywordStats});
 
   @override
+  State<KeywordDetailPage> createState() => _KeywordDetailPageState();
+}
+
+class _KeywordDetailPageState extends State<KeywordDetailPage> {
+  int _currentPage = 0;
+  static const int _itemsPerPage = 5;
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final publications = keywordStats.publications;
+    final publications = widget.keywordStats.publications;
 
     // 1. Tính toán xu hướng xuất bản theo năm cho từ khóa này
     final Map<int, int> trendByYear = {};
@@ -60,6 +68,13 @@ class KeywordDetailPage extends StatelessWidget {
         .map((entry) => AuthorKeywordStats(name: entry.key, count: entry.value))
         .toList()
       ..sort((a, b) => b.count.compareTo(a.count)); // Sắp xếp giảm dần theo số lượng công bố
+
+    // 4. Phân trang bài báo liên quan
+    final startIndex = _currentPage * _itemsPerPage;
+    final endIndex = (startIndex + _itemsPerPage < publications.length)
+        ? startIndex + _itemsPerPage
+        : publications.length;
+    final currentPublications = publications.sublist(startIndex, endIndex);
 
     return Scaffold(
       appBar: AppBar(
@@ -107,7 +122,7 @@ class KeywordDetailPage extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            keywordStats.keyword,
+                            widget.keywordStats.keyword,
                             style: GoogleFonts.outfit(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
@@ -116,7 +131,7 @@ class KeywordDetailPage extends StatelessWidget {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            'appearance_frequency'.tr().replaceAll('{count}', keywordStats.count.toString()),
+                            'appearance_frequency'.tr().replaceAll('{count}', widget.keywordStats.count.toString()),
                             style: GoogleFonts.inter(color: Colors.white60, fontSize: 12),
                           ),
                         ],
@@ -184,9 +199,9 @@ class KeywordDetailPage extends StatelessWidget {
               ListView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                itemCount: publications.length > 5 ? 5 : publications.length,
+                itemCount: currentPublications.length,
                 itemBuilder: (context, index) {
-                  final paper = publications[index];
+                  final paper = currentPublications[index];
                   return Container(
                     margin: const EdgeInsets.only(bottom: 12),
                     decoration: BoxDecoration(
@@ -259,8 +274,112 @@ class KeywordDetailPage extends StatelessWidget {
                   );
                 },
               ),
+              const SizedBox(height: 12),
+              _buildPaginationControls(publications.length),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPaginationControls(int totalItems) {
+    final totalPages = (totalItems / _itemsPerPage).ceil();
+    if (totalPages <= 1) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 8.0, bottom: 16.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // Nút quay lại trang trước
+          _buildPageButton(
+            icon: Icons.chevron_left_rounded,
+            onPressed: _currentPage > 0
+                ? () {
+                    setState(() {
+                      _currentPage--;
+                    });
+                  }
+                : null,
+          ),
+          const SizedBox(width: 12),
+          // Các số trang
+          ...List.generate(totalPages, (index) {
+            final isSelected = index == _currentPage;
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4.0),
+              child: InkWell(
+                onTap: () {
+                  setState(() {
+                    _currentPage = index;
+                  });
+                },
+                borderRadius: BorderRadius.circular(10),
+                child: Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? const Color(0xFF80CBC4)
+                        : Colors.white.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: isSelected
+                          ? const Color(0xFF80CBC4).withOpacity(0.8)
+                          : Colors.white.withOpacity(0.08),
+                    ),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    '${index + 1}',
+                    style: GoogleFonts.outfit(
+                      color: isSelected ? Colors.black87 : Colors.white70,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }),
+          const SizedBox(width: 12),
+          // Nút tới trang tiếp theo
+          _buildPageButton(
+            icon: Icons.chevron_right_rounded,
+            onPressed: _currentPage < totalPages - 1
+                ? () {
+                    setState(() {
+                      _currentPage++;
+                    });
+                  }
+                : null,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPageButton({required IconData icon, VoidCallback? onPressed}) {
+    final isEnabled = onPressed != null;
+    return InkWell(
+      onTap: onPressed,
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        width: 38,
+        height: 38,
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: Colors.white.withOpacity(0.08),
+          ),
+        ),
+        alignment: Alignment.center,
+        child: Icon(
+          icon,
+          color: isEnabled ? Colors.white70 : Colors.white24,
+          size: 22,
         ),
       ),
     );

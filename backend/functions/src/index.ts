@@ -61,7 +61,7 @@ export const checkOpenAlexUpdates = onSchedule("every 2 hours", async (event) =>
 
             // 4. Gửi thông báo đẩy qua FCM đến Topic tương ứng
             // Tên topic được chuẩn hóa viết thường, không dấu cách
-            const topicName = `keyword_${keyword.replace(/\s+/g, "_").toLowerCase()}`;
+            const topicName = "new_publications";
             
             const message = {
               notification: {
