@@ -28,11 +28,12 @@ jobs:
           cd backend/functions
           npm install
 
-      # 4. Biên dịch và Deploy lên Firebase
+      # 4. Cài đặt Firebase CLI và Deploy trực tiếp
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools
+
       - name: Deploy to Firebase
-        uses: w9jds/firebase-action@6dc3b5ce3a7bf7360788959977e34214d0bd1077 # v2.2.0
-        with:
-          args: deploy --only functions
+        run: firebase deploy --only functions
+        working-directory: ./backend
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
-          PROJECT_PATH: './backend' # Trỏ tới thư mục chứa cấu hình firebase.json của bạn
