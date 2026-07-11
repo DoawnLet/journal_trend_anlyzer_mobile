@@ -9,12 +9,14 @@ import 'package:journal_trend_analysis_mb/viewmodels/auth_notifier.dart';
 import 'package:journal_trend_analysis_mb/viewmodels/shared_state.dart';
 import 'package:journal_trend_analysis_mb/widget_tree.dart';
 import 'package:journal_trend_analysis_mb/services/mock_firebase_service.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 
 Future<void> main() async {
   // Đảm bảo Flutter framework được khởi tạo hoàn chỉnh trước khi load assets
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
-  
+  FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+
   // Khởi tạo các dịch vụ Firebase thật (Storage, Remote Config, FCM, Crashlytics)
   await MockFirebaseService.instance.initRealFirebase();
 
@@ -69,4 +71,9 @@ class MyApp extends StatelessWidget {
       ),
     );
   }
+}
+
+@pragma('vm:entry-point')
+Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp();
 }

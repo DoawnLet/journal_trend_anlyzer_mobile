@@ -54,6 +54,7 @@ export const checkOpenAlexUpdates = onSchedule("every 2 hours", async (event) =>
 
           // 3. So sánh nếu thấy bài báo mới nhất khác bài báo cũ
           if (latestWorkId !== lastPubId) {
+          
             console.log(`[!] Phát hiện bài báo mới cho từ khóa "${keyword}": "${title}"`);
 
             // Cập nhật lại Firestore
