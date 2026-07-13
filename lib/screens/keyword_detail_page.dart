@@ -287,6 +287,99 @@ class _KeywordDetailPageState extends State<KeywordDetailPage> {
     final totalPages = (totalItems / _itemsPerPage).ceil();
     if (totalPages <= 1) return const SizedBox.shrink();
 
+    // Xác định các số trang cần hiển thị để tránh tràn màn hình (pixel overflow)
+    final List<int> pagesToShow = [];
+    if (totalPages <= 5) {
+      pagesToShow.addAll(List.generate(totalPages, (i) => i));
+    } else {
+      // Luôn hiển thị trang đầu tiên
+      pagesToShow.add(0);
+
+      int start = _currentPage - 1;
+      int end = _currentPage + 1;
+
+      if (start <= 1) {
+        start = 1;
+        end = 3;
+      }
+      if (end >= totalPages - 2) {
+        end = totalPages - 2;
+        start = totalPages - 4;
+      }
+
+      for (int i = start; i <= end; i++) {
+        pagesToShow.add(i);
+      }
+
+      // Luôn hiển thị trang cuối cùng
+      pagesToShow.add(totalPages - 1);
+    }
+
+    final List<Widget> pageButtons = [];
+    for (int i = 0; i < pagesToShow.length; i++) {
+      final index = pagesToShow[i];
+      
+      // Thêm dấu ba chấm (...) nếu có khoảng cách giữa các trang
+      if (i > 0 && index - pagesToShow[i - 1] > 1) {
+        pageButtons.add(
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4.0),
+            child: Container(
+              width: 24,
+              height: 38,
+              alignment: Alignment.center,
+              child: Text(
+                '...',
+                style: GoogleFonts.outfit(
+                  color: Colors.white54,
+                  fontSize: 14,
+                ),
+              ),
+            ),
+          ),
+        );
+      }
+
+      final isSelected = index == _currentPage;
+      pageButtons.add(
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4.0),
+          child: InkWell(
+            onTap: () {
+              setState(() {
+                _currentPage = index;
+              });
+            },
+            borderRadius: BorderRadius.circular(10),
+            child: Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? const Color(0xFF80CBC4)
+                    : Colors.white.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: isSelected
+                      ? const Color(0xFF80CBC4).withOpacity(0.8)
+                      : Colors.white.withOpacity(0.08),
+                ),
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                '${index + 1}',
+                style: GoogleFonts.outfit(
+                  color: isSelected ? Colors.black87 : Colors.white70,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
     return Padding(
       padding: const EdgeInsets.only(top: 8.0, bottom: 16.0),
       child: Row(
@@ -304,45 +397,8 @@ class _KeywordDetailPageState extends State<KeywordDetailPage> {
                 : null,
           ),
           const SizedBox(width: 12),
-          // Các số trang
-          ...List.generate(totalPages, (index) {
-            final isSelected = index == _currentPage;
-            return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4.0),
-              child: InkWell(
-                onTap: () {
-                  setState(() {
-                    _currentPage = index;
-                  });
-                },
-                borderRadius: BorderRadius.circular(10),
-                child: Container(
-                  width: 38,
-                  height: 38,
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? const Color(0xFF80CBC4)
-                        : Colors.white.withOpacity(0.05),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                      color: isSelected
-                          ? const Color(0xFF80CBC4).withOpacity(0.8)
-                          : Colors.white.withOpacity(0.08),
-                    ),
-                  ),
-                  alignment: Alignment.center,
-                  child: Text(
-                    '${index + 1}',
-                    style: GoogleFonts.outfit(
-                      color: isSelected ? Colors.black87 : Colors.white70,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                  ),
-                ),
-              ),
-            );
-          }),
+          // Các nút số trang và dấu ba chấm
+          ...pageButtons,
           const SizedBox(width: 12),
           // Nút tới trang tiếp theo
           _buildPageButton(
