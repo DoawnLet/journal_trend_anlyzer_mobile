@@ -67,14 +67,23 @@ class AuthNotifier extends ChangeNotifier {
 
   /// Phân tích thông tin lỗi xác thực thực tế
   String _parseAuthError(dynamic e) {
-    final errorStr = e.toString().toLowerCase();
-    if (errorStr.contains('sign_in_failed') && (errorStr.contains('10') || errorStr.contains('12500'))) {
+    final errorStr = e.toString();
+    final errorLower = errorStr.toLowerCase();
+    if (errorLower.startsWith('no_credential:')) {
+      final colonIdx = errorStr.indexOf(':');
+      return colonIdx >= 0 ? errorStr.substring(colonIdx + 1).trim() : 'Chưa đăng nhập tài khoản Google trên thiết bị.';
+    }
+    if (errorLower.startsWith('sign_in_cancelled:')) {
+      final colonIdx = errorStr.indexOf(':');
+      return colonIdx >= 0 ? errorStr.substring(colonIdx + 1).trim() : 'Đăng nhập bị hủy bởi người dùng.';
+    }
+    if (errorLower.contains('sign_in_failed') && (errorLower.contains('10') || errorLower.contains('12500'))) {
       return 'Lỗi cấu hình Google Sign-In (API Exception 10/12500). Bạn cần thêm mã vân tay SHA-1 của thiết bị vào cài đặt ứng dụng Android trên Firebase Console.';
-    } else if (errorStr.contains('network_error') || errorStr.contains('network-request-failed')) {
+    } else if (errorLower.contains('network_error') || errorLower.contains('network-request-failed')) {
       return 'Lỗi kết nối mạng. Vui lòng kiểm tra lại kết nối Internet và thử lại.';
-    } else if (errorStr.contains('sign_in_canceled') || errorStr.contains('user-cancelled') || errorStr.contains('canceled')) {
+    } else if (errorLower.contains('sign_in_canceled') || errorLower.contains('user-cancelled') || errorLower.contains('canceled')) {
       return 'Đăng nhập bị hủy bởi người dùng.';
-    } else if (errorStr.contains('user-disabled')) {
+    } else if (errorLower.contains('user-disabled')) {
       return 'Tài khoản này đã bị vô hiệu hóa trong Firebase Console.';
     }
     return 'Đăng nhập thất bại: $e';
