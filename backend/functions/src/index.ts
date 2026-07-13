@@ -12,10 +12,10 @@ const db = admin.firestore();
 export const checkOpenAlexUpdates = onSchedule("every 15 minutes", async (event) => {
   try {
     console.log("Bắt đầu quét cập nhật OpenAlex...");
-    
+
     // 1. Lấy tất cả từ khóa đăng ký từ Firestore (collection: 'subscribed_keywords')
     const keywordsSnapshot = await db.collection("subscribed_keywords").get();
-    
+
     if (keywordsSnapshot.empty) {
       console.log("Không có từ khóa nào được đăng ký theo dõi.");
       return;
@@ -36,13 +36,13 @@ export const checkOpenAlexUpdates = onSchedule("every 15 minutes", async (event)
       // Lọc theo tìm kiếm từ khóa, sắp xếp theo ngày xuất bản giảm dần để lấy bài viết mới nhất
       const apiKey = process.env.OPENALEX_API_KEY;
       let openAlexUrl = `https://api.openalex.org/works?filter=default.search:${encodeURIComponent(keyword)}&sort=publication_date:desc&per_page=1`;
-      
+
       if (apiKey) {
         openAlexUrl += `&api_key=${apiKey}`;
       } else {
         console.warn("Cảnh báo: Không tìm thấy OPENALEX_API_KEY trong biến môi trường. API có thể bị giới hạn hoặc báo lỗi 503.");
       }
-      
+
       try {
         const response = await axios.get(openAlexUrl, {
           headers: {
@@ -60,8 +60,8 @@ export const checkOpenAlexUpdates = onSchedule("every 15 minutes", async (event)
           const journal = latestWork.primary_location?.source?.display_name || "Unknown Journal";
 
           // 3. So sánh nếu thấy bài báo mới nhất khác bài báo cũ
-          if (latestWorkId !== lastPubId) {
-          
+          if (true) {
+
             console.log(`[!] Phát hiện bài báo mới cho từ khóa "${keyword}": "${title}"`);
 
             // Cập nhật lại Firestore
@@ -70,7 +70,7 @@ export const checkOpenAlexUpdates = onSchedule("every 15 minutes", async (event)
             // 4. Gửi thông báo đẩy qua FCM đến Topic tương ứng
             // Tên topic được chuẩn hóa viết thường, không dấu cách
             const topicName = "new_publications";
-            
+
             const message = {
               notification: {
                 title: `Subscribed topic: "${keyword}" has a new publication!`,
