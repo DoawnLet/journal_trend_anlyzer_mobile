@@ -127,10 +127,10 @@ class _JournalsPageState extends State<JournalsPage> {
                       // Biểu đồ đóng góp Tạp chí
                       Text(
                         _chartMetricIndex == 0
-                            ? 'Biểu đồ đóng góp sản lượng'
+                            ? 'journal_productivity_chart'.tr()
                             : (_chartMetricIndex == 1
-                                ? 'Biểu đồ phân bố trích dẫn'
-                                : 'Biểu đồ trích dẫn trung bình'),
+                                ? 'journal_citation_chart'.tr()
+                                : 'journal_avg_citation_chart'.tr()),
                         style: GoogleFonts.outfit(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -157,7 +157,11 @@ class _JournalsPageState extends State<JournalsPage> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            'Top tạp chí (${startIndex + 1} - $endIndex trên $totalJournalsCount)',
+                            'top_journals_range'
+                                .tr()
+                                .replaceAll('{start}', (startIndex + 1).toString())
+                                .replaceAll('{end}', endIndex.toString())
+                                .replaceAll('{total}', totalJournalsCount.toString()),
                             style: GoogleFonts.outfit(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
@@ -197,7 +201,10 @@ class _JournalsPageState extends State<JournalsPage> {
                             ),
                             const SizedBox(width: 12),
                             Text(
-                              'Trang ${_currentPage + 1} / $totalPages',
+                              'page_indicator'
+                                  .tr()
+                                  .replaceAll('{current}', (_currentPage + 1).toString())
+                                  .replaceAll('{total}', totalPages.toString()),
                               style: GoogleFonts.outfit(
                                 color: Colors.white,
                                 fontWeight: FontWeight.bold,
@@ -284,9 +291,9 @@ class _JournalsPageState extends State<JournalsPage> {
                   ),
                 ),
                 const SizedBox(height: 2),
-                const Text(
-                  'Tổng số tạp chí',
-                  style: TextStyle(color: Colors.white60, fontSize: 11, fontWeight: FontWeight.w500),
+                Text(
+                  'total_journals'.tr(),
+                  style: const TextStyle(color: Colors.white60, fontSize: 11, fontWeight: FontWeight.w500),
                 ),
               ],
             ),
@@ -328,9 +335,9 @@ class _JournalsPageState extends State<JournalsPage> {
                   ),
                 ),
                 const SizedBox(height: 2),
-                const Text(
-                  'Bài viết TB / Tạp chí',
-                  style: TextStyle(color: Colors.white60, fontSize: 11, fontWeight: FontWeight.w500),
+                Text(
+                  'avg_articles_per_journal'.tr(),
+                  style: const TextStyle(color: Colors.white60, fontSize: 11, fontWeight: FontWeight.w500),
                 ),
               ],
             ),

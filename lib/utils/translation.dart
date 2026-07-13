@@ -23,6 +23,8 @@ class AppTranslation {
       'keywords_tab': 'Keywords',
       'profile_tab': 'Profile',
       'welcome_to_portal': 'Academic Research Portal',
+      'welcome_user': 'Welcome {name}!',
+      'login_failed_try_again': 'Login failed. Please try again!',
       'sign_in_desc': 'Sign in with your Google account to access publication statistics, manage reports, and test Firebase cloud services.',
       
       // Home Page
@@ -321,6 +323,15 @@ class AppTranslation {
       'incoming_notification_alert': 'Received push notification: {title}',
       'debug_analytics_logs': 'Debug Analytics Logs (Terminal)',
       'analytics_desc': 'Real-time logs of events sent to Firebase Analytics (project validation).',
+
+      // Journals Page
+      'total_journals': 'Total Journals',
+      'avg_articles_per_journal': 'Avg Articles / Journal',
+      'journal_productivity_chart': 'Productivity Contribution Chart',
+      'journal_citation_chart': 'Citation Distribution Chart',
+      'journal_avg_citation_chart': 'Average Citation Chart',
+      'top_journals_range': 'Top Journals ({start} - {end} of {total})',
+      'page_indicator': 'Page {current} / {total}',
     },
     'vi': {
       // General Navigation
@@ -334,6 +345,8 @@ class AppTranslation {
       'keywords_tab': 'Từ khóa',
       'profile_tab': 'Cá nhân',
       'welcome_to_portal': 'Cổng thông tin học thuật',
+      'welcome_user': 'Chào mừng {name}!',
+      'login_failed_try_again': 'Đăng nhập thất bại. Vui lòng thử lại!',
       'sign_in_desc': 'Đăng nhập bằng tài khoản Google để xem thống kê xu hướng xuất bản, quản lý báo cáo và trải nghiệm dịch vụ đám mây Firebase.',
       
       // Home Page
@@ -632,6 +645,15 @@ class AppTranslation {
       'incoming_notification_alert': 'Đã nhận thông báo đẩy: {title}',
       'debug_analytics_logs': 'Nhật ký Sự kiện Analytics (Terminal)',
       'analytics_desc': 'Nhật ký các sự kiện thời gian thực đã gửi lên Firebase Analytics (dùng làm minh chứng dự án).',
+
+      // Journals Page
+      'total_journals': 'Tổng số tạp chí',
+      'avg_articles_per_journal': 'Bài viết TB / Tạp chí',
+      'journal_productivity_chart': 'Biểu đồ đóng góp sản lượng',
+      'journal_citation_chart': 'Biểu đồ phân bố trích dẫn',
+      'journal_avg_citation_chart': 'Biểu đồ trích dẫn trung bình',
+      'top_journals_range': 'Top tạp chí ({start} - {end} trên {total})',
+      'page_indicator': 'Trang {current} / {total}',
     }
   };
 

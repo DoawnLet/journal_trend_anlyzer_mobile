@@ -59,13 +59,13 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
     if (success) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Chào mừng ${authNotifier.currentUser?.displayName}!'),
+          content: Text('welcome_user'.tr().replaceAll('{name}', authNotifier.currentUser?.displayName ?? '')),
           backgroundColor: AppColors.success,
           behavior: SnackBarBehavior.floating,
         ),
       );
     } else {
-      final errorMsg = authNotifier.errorMessage ?? 'Đăng nhập thất bại. Vui lòng thử lại!';
+      final errorMsg = authNotifier.errorMessage ?? 'login_failed_try_again'.tr();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(errorMsg),
