@@ -34,7 +34,14 @@ export const checkOpenAlexUpdates = onSchedule("every 2 hours", async (event) =>
 
       // 2. Gọi OpenAlex API để tìm bài báo mới nhất thuộc từ khóa này
       // Lọc theo tìm kiếm từ khóa, sắp xếp theo ngày xuất bản giảm dần để lấy bài viết mới nhất
-      const openAlexUrl = `https://api.openalex.org/works?filter=default.search:${encodeURIComponent(keyword)}&sort=publication_date:desc&per_page=1`;
+      const apiKey = process.env.OPENALEX_API_KEY;
+      let openAlexUrl = `https://api.openalex.org/works?filter=default.search:${encodeURIComponent(keyword)}&sort=publication_date:desc&per_page=1`;
+      
+      if (apiKey) {
+        openAlexUrl += `&api_key=${apiKey}`;
+      } else {
+        console.warn("Cảnh báo: Không tìm thấy OPENALEX_API_KEY trong biến môi trường. API có thể bị giới hạn hoặc báo lỗi 503.");
+      }
       
       try {
         const response = await axios.get(openAlexUrl, {

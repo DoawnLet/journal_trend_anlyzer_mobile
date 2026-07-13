@@ -59,3 +59,7 @@ app.*.map.json
 
 # Environment secrets
 .env
+
+# Gemini/Antigravity agent files
+.agents/
+skills-lock.json

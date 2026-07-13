@@ -11,10 +11,6 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:journal_trend_analysis_mb/services/firebase_auth_service.dart';
 import 'package:journal_trend_analysis_mb/viewmodels/shared_state.dart';
 
-Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  await MockFirebaseService.instance._showSystemNotification(message);
-}
-
 /// Lớp đại diện cho User mock của ứng dụng
 class MockFirebaseUser {
   final String uid;
@@ -193,10 +189,6 @@ class MockFirebaseService extends ChangeNotifier {
         // Lấy và in FCM Token để kiểm tra
         final token = await messaging.getToken();
         debugPrint('[FCM] Token: $token');
-
-        FirebaseMessaging.onBackgroundMessage(
-          _firebaseMessagingBackgroundHandler,
-        );
 
         // Lắng nghe thông báo ở chế độ foreground
         FirebaseMessaging.onMessage.listen((RemoteMessage message) async {

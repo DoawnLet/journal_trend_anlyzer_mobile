@@ -1,5 +1,6 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
 import 'package:journal_trend_analysis_mb/theme/app_theme.dart';
@@ -15,7 +16,9 @@ Future<void> main() async {
   // Đảm bảo Flutter framework được khởi tạo hoàn chỉnh trước khi load assets
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
-  FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+  if (!kDebugMode) {
+    FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+  }
 
   // Khởi tạo các dịch vụ Firebase thật (Storage, Remote Config, FCM, Crashlytics)
   await MockFirebaseService.instance.initRealFirebase();
