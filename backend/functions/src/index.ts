@@ -60,7 +60,7 @@ export const checkOpenAlexUpdates = onSchedule("every 15 minutes", async (event)
           const journal = latestWork.primary_location?.source?.display_name || "Unknown Journal";
 
           // 3. So sánh nếu thấy bài báo mới nhất khác bài báo cũ
-          if (true) {
+          if (latestWorkId) {
 
             console.log(`[!] Phát hiện bài báo mới cho từ khóa "${keyword}": "${title}"`);
 
