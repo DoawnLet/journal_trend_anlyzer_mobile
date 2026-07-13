@@ -6,10 +6,10 @@ admin.initializeApp();
 const db = admin.firestore();
 
 /**
- * Cloud Function chạy định kỳ mỗi 2 tiếng để quét cập nhật từ OpenAlex
+ * Cloud Function chạy định kỳ mỗi 15 phút để quét cập nhật từ OpenAlex
  * và gửi thông báo qua Firebase Cloud Messaging (FCM).
  */
-export const checkOpenAlexUpdates = onSchedule("every 2 hours", async (event) => {
+export const checkOpenAlexUpdates = onSchedule("every 15 minutes", async (event) => {
   try {
     console.log("Bắt đầu quét cập nhật OpenAlex...");
     
@@ -73,8 +73,8 @@ export const checkOpenAlexUpdates = onSchedule("every 2 hours", async (event) =>
             
             const message = {
               notification: {
-                title: `Chủ đề đăng ký: ${keyword} có bài viết mới!`,
-                body: `"${title}" vừa được đăng trên tạp chí ${journal}.`,
+                title: `Subscribed topic: "${keyword}" has a new publication!`,
+                body: `"${title}" has just been published in the journal ${journal}.`,
               },
               data: {
                 click_action: "FLUTTER_NOTIFICATION_CLICK",
@@ -85,7 +85,7 @@ export const checkOpenAlexUpdates = onSchedule("every 2 hours", async (event) =>
             };
 
             await admin.messaging().send(message);
-            console.log(`[FCM] Đã gửi thông báo đẩy thành công đến topic: "${topicName}"`);
+            console.log(`[FCM] Successfully sent push notification to topic: "${topicName}"`);
           } else {
             console.log(`Không có bài viết mới cho từ khóa "${keyword}"`);
           }
