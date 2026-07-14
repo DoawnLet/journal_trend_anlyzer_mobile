@@ -8,6 +8,7 @@ import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:journal_trend_analysis_mb/services/firebase_auth_service.dart';
 import 'package:journal_trend_analysis_mb/viewmodels/shared_state.dart';
 
@@ -32,12 +33,18 @@ class MockNotification {
   final String title;
   final String body;
   final DateTime timestamp;
+  final String? url;
+  final String? publicationTitle;
+  final String? journalName;
 
   const MockNotification({
     required this.id,
     required this.title,
     required this.body,
     required this.timestamp,
+    this.url,
+    this.publicationTitle,
+    this.journalName,
   });
 }
 
@@ -195,7 +202,7 @@ class MockFirebaseService extends ChangeNotifier {
           await _showSystemNotification(message);
         });
 
-        // Lắng nghe thông báo khi bấm mở app từ khay hệ thống
+        // Lắng nghe thông báo khi bấm mở app từ khay hệ thống (khi app đang chạy nền)
         FirebaseMessaging.onMessageOpenedApp.listen((
           RemoteMessage message,
         ) async {
@@ -206,7 +213,20 @@ class MockFirebaseService extends ChangeNotifier {
           } catch (e) {
             debugPrint('[FCM] Failed to redirect to Profile tab: $e');
           }
+          final publicationUrl = message.data['publication_url']?.toString();
+          if (publicationUrl != null && publicationUrl.isNotEmpty) {
+            _launchUrlHelper(publicationUrl);
+          }
         });
+
+        // Xử lý thông báo khi app bị tắt hoàn toàn (Terminated state) và được mở bởi bấm thông báo
+        final initialMessage = await messaging.getInitialMessage();
+        if (initialMessage != null) {
+          final publicationUrl = initialMessage.data['publication_url']?.toString();
+          if (publicationUrl != null && publicationUrl.isNotEmpty) {
+            _launchUrlHelper(publicationUrl);
+          }
+        }
       } catch (e) {
         debugPrint('[MockFirebaseService] Real FCM init failed: $e');
       }
@@ -381,7 +401,23 @@ class MockFirebaseService extends ChangeNotifier {
       iOS: iosSettings,
     );
 
-    await _flutterLocalNotificationsPlugin.initialize(initializationSettings);
+    await _flutterLocalNotificationsPlugin.initialize(
+      initializationSettings,
+      onDidReceiveNotificationResponse: (NotificationResponse response) {
+        final payload = response.payload;
+        if (payload != null && payload.isNotEmpty) {
+          try {
+            final data = jsonDecode(payload) as Map<String, dynamic>;
+            final url = data['publication_url']?.toString();
+            if (url != null && url.isNotEmpty) {
+              _launchUrlHelper(url);
+            }
+          } catch (e) {
+            debugPrint('[FCM] Error handling local notification tap payload: $e');
+          }
+        }
+      },
+    );
 
     const channel = AndroidNotificationChannel(
       'journal_trend_channel',
@@ -442,19 +478,52 @@ class MockFirebaseService extends ChangeNotifier {
       payload: payload,
     );
 
-    simulateIncomingNotification(title, body);
+    final publicationUrl = message.data['publication_url']?.toString();
+    final publicationTitle = message.data['publication_title']?.toString();
+    final journalName = message.data['journal_name']?.toString();
+    simulateIncomingNotification(
+      title,
+      body,
+      url: publicationUrl,
+      publicationTitle: publicationTitle,
+      journalName: journalName,
+    );
   }
 
-  void simulateIncomingNotification(String title, String body) {
+  void simulateIncomingNotification(
+    String title,
+    String body, {
+    String? url,
+    String? publicationTitle,
+    String? journalName,
+  }) {
     final notification = MockNotification(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       title: title,
       body: body,
       timestamp: DateTime.now(),
+      url: url,
+      publicationTitle: publicationTitle,
+      journalName: journalName,
     );
     _notifications.insert(0, notification);
-    debugPrint('[Firebase Messaging] Notification received: $title - $body');
+    debugPrint(
+      '[Firebase Messaging] Notification received: $title - $body${url != null ? ' - $url' : ''}',
+    );
     notifyListeners();
+  }
+
+  Future<void> _launchUrlHelper(String urlStr) async {
+    final cleanUrl = urlStr.trim();
+    if (cleanUrl.isEmpty) return;
+    final uri = Uri.tryParse(cleanUrl);
+    if (uri != null) {
+      try {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } catch (e) {
+        debugPrint('[FCM] Could not launch URL: $urlStr, error: $e');
+      }
+    }
   }
 
   // --- 6. CRASHLYTICS ---

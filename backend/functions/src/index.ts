@@ -58,6 +58,9 @@ export const checkOpenAlexUpdates = onSchedule("every 15 minutes", async (event)
           const latestWorkId = latestWork.id; // Ví dụ: "https://openalex.org/W123456789"
           const title = latestWork.title || "No Title";
           const journal = latestWork.primary_location?.source?.display_name || "Unknown Journal";
+          const doi = latestWork.doi || "";
+          const landingPageUrl = latestWork.primary_location?.landing_page_url || "";
+          const publicationUrl = doi || landingPageUrl || latestWorkId || "";
 
           // 3. So sánh nếu thấy bài báo mới nhất khác bài báo cũ
           if (latestWorkId) {
@@ -80,6 +83,8 @@ export const checkOpenAlexUpdates = onSchedule("every 15 minutes", async (event)
                 click_action: "FLUTTER_NOTIFICATION_CLICK",
                 keyword: keyword,
                 publication_title: title,
+                publication_url: publicationUrl,
+                journal_name: journal,
               },
               topic: topicName,
             };

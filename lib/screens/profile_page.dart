@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -12,6 +14,8 @@ import 'package:journal_trend_analysis_mb/utils/translation.dart';
 import 'package:journal_trend_analysis_mb/viewmodels/auth_notifier.dart';
 import 'package:journal_trend_analysis_mb/viewmodels/shared_state.dart';
 import 'package:journal_trend_analysis_mb/widgets/glass_card.dart';
+import 'package:journal_trend_analysis_mb/screens/detail_page.dart';
+import 'package:journal_trend_analysis_mb/models/publication_model.dart';
 
 /// Màn hình Cá nhân (Profile Screen) tích hợp demo các dịch vụ Firebase
 class ProfilePage extends StatefulWidget {
@@ -24,6 +28,7 @@ class ProfilePage extends StatefulWidget {
 class _ProfilePageState extends State<ProfilePage> {
   bool _isExporting = false;
   String? _exportedUrl;
+  bool _isScanning = false;
 
   Future<void> _exportPdfReport(BuildContext context) async {
     setState(() {
@@ -126,15 +131,24 @@ class _ProfilePageState extends State<ProfilePage> {
     final List<Map<String, String>> templates = [
       {
         'title': 'New trending research topic: Deep Learning',
-        'body': 'Recent publications on Deep Learning show a significant increase of 35% in citation rates.'
+        'body': 'Recent publications on Deep Learning show a significant increase of 35% in citation rates.',
+        'url': 'https://doi.org/10.1145/3613904.3642456',
+        'publicationTitle': 'Deep Learning: Modern Trends and Architectures',
+        'journalName': 'ACM Transactions on Intelligent Systems',
       },
       {
         'title': 'Highly cited publication alert',
-        'body': 'A paper on Quantum Computing has crossed 1,200 citations this month.'
+        'body': 'A paper on Quantum Computing has crossed 1,200 citations this month.',
+        'url': 'https://doi.org/10.1038/s41586-019-1666-5',
+        'publicationTitle': 'Quantum Supremacy using a Programmable Superconducting Processor',
+        'journalName': 'Nature',
       },
       {
         'title': 'Research trend updates: Renewable Energy',
-        'body': 'Renewable Energy journals have added 150 new publications this week.'
+        'body': 'Renewable Energy journals have added 150 new publications this week.',
+        'url': 'https://doi.org/10.1016/j.rser.2023.113245',
+        'publicationTitle': 'Advancements in Solar Cell Efficiency and Grid Integration',
+        'journalName': 'Renewable and Sustainable Energy Reviews',
       }
     ];
 
@@ -142,6 +156,9 @@ class _ProfilePageState extends State<ProfilePage> {
     MockFirebaseService.instance.simulateIncomingNotification(
       template['title']!,
       template['body']!,
+      url: template['url']!,
+      publicationTitle: template['publicationTitle'],
+      journalName: template['journalName'],
     );
 
     ScaffoldMessenger.of(context).showSnackBar(
@@ -151,6 +168,111 @@ class _ProfilePageState extends State<ProfilePage> {
         behavior: SnackBarBehavior.floating,
       ),
     );
+  }
+
+  Future<void> _scanLatestPublication() async {
+    setState(() {
+      _isScanning = true;
+    });
+
+    final Set<String> keywordsToScan = {
+      'Engineering',
+      'Data Mining',
+      'Economics',
+      'Computer Security',
+      'Deep Learning',
+      'Quantum Computing',
+      'Renewable Energy',
+      'Artificial Intelligence',
+      'Machine Learning',
+      'Computer Vision',
+      'Psychology',
+      'Artificial Intelligence in Healthcare and Education',
+      'Political science',
+      'Natural Language Processing',
+      'Mathematics',
+      'Law',
+      'Data Science',
+      'Computer Science',
+    };
+    if (SharedState.activeQueryNotifier.value.isNotEmpty) {
+      keywordsToScan.add(SharedState.activeQueryNotifier.value);
+    }
+
+    int successCount = 0;
+
+    try {
+      final List<Future<void>> tasks = keywordsToScan.map((keyword) async {
+        try {
+          final url = Uri.parse(
+            'https://api.openalex.org/works?filter=default.search:${Uri.encodeComponent(keyword)}&sort=publication_date:desc&per_page=1&mailto=minhvtbd12345@fpt.edu.vn',
+          );
+          final response = await http.get(url, headers: {
+            'Accept': 'application/json',
+            'User-Agent': 'JournalTrendAnalyzerMobile/1.0',
+          }).timeout(const Duration(seconds: 10));
+
+          if (response.statusCode == 200) {
+            final data = jsonDecode(response.body) as Map<String, dynamic>;
+            final results = data['results'] as List?;
+            if (results != null && results.isNotEmpty) {
+              final latestWork = results[0];
+              final title = latestWork['title'] ?? 'No Title';
+              final journal = latestWork['primary_location']?['source']?['display_name'] ?? 'Unknown Journal';
+              final doi = latestWork['doi']?.toString() ?? '';
+              final landingPageUrl = latestWork['primary_location']?['landing_page_url']?.toString() ?? '';
+              final latestWorkId = latestWork['id']?.toString() ?? '';
+              final publicationUrl = doi.isNotEmpty ? doi : (landingPageUrl.isNotEmpty ? landingPageUrl : latestWorkId);
+
+              // Avoid duplicate notifications by checking publication title
+              final isExist = MockFirebaseService.instance.notifications.any((n) => n.body.contains(title));
+              if (!isExist) {
+                MockFirebaseService.instance.simulateIncomingNotification(
+                  'New article for topic: "$keyword"',
+                  '"$title" has just been published in the journal $journal.',
+                  url: publicationUrl,
+                  publicationTitle: title,
+                  journalName: journal,
+                );
+                successCount++;
+              }
+            }
+          }
+        } catch (e) {
+          debugPrint('[FCM] Error scanning keyword $keyword: $e');
+        }
+      }).toList();
+
+      await Future.wait(tasks);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(successCount > 0 
+              ? 'Scan successful! Found and added $successCount new articles.'
+              : 'Scan complete. No new articles found.'),
+            backgroundColor: AppColors.success,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error scanning publications: $e'),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isScanning = false;
+        });
+      }
+    }
   }
 
   Future<void> _openDownloadUrl(String url) async {
@@ -632,27 +754,52 @@ class _ProfilePageState extends State<ProfilePage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
+              Expanded(
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: const Color(0xFFFF9800).withOpacity(0.15),
+                      ),
+                      child: const Icon(Icons.notifications_active_rounded, color: Color(0xFFFF9800), size: 18),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'notification_center_fcm'.tr(),
+                        style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 14),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
               Row(
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: const Color(0xFFFF9800).withOpacity(0.15),
-                    ),
-                    child: const Icon(Icons.notifications_active_rounded, color: Color(0xFFFF9800), size: 18),
+                  IconButton(
+                    icon: _isScanning
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.0,
+                              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFFF9800)),
+                            ),
+                          )
+                        : const Icon(Icons.sync_rounded, color: Color(0xFFFF9800), size: 20),
+                    tooltip: 'Quét bài báo mới nhất',
+                    onPressed: _isScanning ? null : _scanLatestPublication,
                   ),
-                  const SizedBox(width: 10),
-                  Text(
-                    'notification_center_fcm'.tr(),
-                    style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 15),
+                  IconButton(
+                    icon: const Icon(Icons.add_alert_rounded, color: Color(0xFFFF9800), size: 20),
+                    tooltip: 'simulate_incoming_notification'.tr(),
+                    onPressed: _simulatePushNotification,
                   ),
                 ],
-              ),
-              IconButton(
-                icon: const Icon(Icons.add_alert_rounded, color: Color(0xFFFF9800), size: 20),
-                tooltip: 'simulate_incoming_notification'.tr(),
-                onPressed: _simulatePushNotification,
               ),
             ],
           ),
@@ -679,7 +826,7 @@ class _ProfilePageState extends State<ProfilePage> {
             ListView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              itemCount: service.notifications.length > 3 ? 3 : service.notifications.length,
+              itemCount: service.notifications.length,
               itemBuilder: (context, index) {
                 final notif = service.notifications[index];
                 return Card(
@@ -688,48 +835,26 @@ class _ProfilePageState extends State<ProfilePage> {
                   elevation: 0,
                   child: InkWell(
                     onTap: () {
-                      // Phân tích chủ đề từ tiêu đề/nội dung thông báo để chuyển hướng tìm kiếm
-                      String topic = '';
-                      final textToSearch = '${notif.title} ${notif.body}'.toLowerCase();
-                      if (textToSearch.contains('deep learning')) {
-                        topic = 'Deep Learning';
-                      } else if (textToSearch.contains('quantum')) {
-                        topic = 'Quantum Computing';
-                      } else if (textToSearch.contains('renewable')) {
-                        topic = 'Renewable Energy';
-                      } else if (textToSearch.contains('artificial intelligence')) {
-                        topic = 'Artificial Intelligence';
-                      }
+                      final publication = Publication(
+                        id: notif.id,
+                        title: notif.publicationTitle ?? notif.title,
+                        publicationYear: notif.timestamp.year,
+                        citationCount: 0,
+                        doi: notif.url,
+                        journalName: notif.journalName ?? 'Unknown Journal',
+                        authors: const [],
+                        abstractText: notif.body,
+                        concepts: const [],
+                        topics: const [],
+                        landingPageUrl: notif.url,
+                      );
 
-                      if (topic.isNotEmpty) {
-                        // Thiết lập từ khóa tìm kiếm toàn cục và chuyển hướng về tab Trang chủ (Index 0)
-                        SharedState.activeQueryNotifier.value = topic;
-                        SharedState.setKeyword(topic);
-                        SharedState.activeTabNotifier.value = 0;
-
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('${'search_topic'.tr()}: $topic'),
-                            backgroundColor: AppColors.success,
-                            behavior: SnackBarBehavior.floating,
-                          ),
-                        );
-                      } else {
-                        // Hộp thoại hiển thị chi tiết nếu là thông báo thường
-                        showDialog(
-                          context: context,
-                          builder: (context) => AlertDialog(
-                            title: Text(notif.title),
-                            content: Text(notif.body),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(context),
-                                child: Text('close_button'.tr()),
-                              ),
-                            ],
-                          ),
-                        );
-                      }
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => DetailPage(publication: publication),
+                        ),
+                      );
                     },
                     borderRadius: BorderRadius.circular(12),
                     child: Container(
@@ -754,6 +879,24 @@ class _ProfilePageState extends State<ProfilePage> {
                                 ),
                               ),
                               const SizedBox(width: 8),
+                              if (notif.url != null && notif.url!.isNotEmpty) ...[
+                                InkWell(
+                                  onTap: () => _openDownloadUrl(notif.url!),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withOpacity(0.1),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(
+                                      Icons.open_in_new_rounded,
+                                      color: Color(0xFFFF9800),
+                                      size: 14,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                              ],
                               Text(
                                 '${notif.timestamp.hour.toString().padLeft(2, '0')}:${notif.timestamp.minute.toString().padLeft(2, '0')}',
                                 style: GoogleFonts.inter(

@@ -19,7 +19,7 @@ class MetricCardGrid extends StatelessWidget {
             crossAxisCount: crossAxisCount,
             crossAxisSpacing: 12,
             mainAxisSpacing: 12,
-            childAspectRatio: crossAxisCount == 1 ? 3.3 : 1.45,
+            childAspectRatio: crossAxisCount == 1 ? 3.3 : 1.3,
           ),
           itemBuilder: (context, index) {
             final metric = metrics[index];
@@ -51,7 +51,7 @@ class _MetricCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
