@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:journal_trend_analysis_mb/models/publication_filter_model.dart';
 import 'package:journal_trend_analysis_mb/models/publication_model.dart';
@@ -28,6 +31,100 @@ class SharedState {
       ValueNotifier<List<Publication>>(const []);
 
   static final ValueNotifier<int> totalPublicationsCountNotifier = ValueNotifier<int>(0);
+
+  /// Quản lý tìm kiếm độc lập cho tab Tạp chí (Journals)
+  static final ValueNotifier<String> journalQueryNotifier = ValueNotifier<String>('');
+  static final ValueNotifier<List<Map<String, dynamic>>> journalSourcesNotifier = ValueNotifier<List<Map<String, dynamic>>>(const []);
+  static final ValueNotifier<bool> journalLoadingNotifier = ValueNotifier<bool>(false);
+
+  /// Quản lý danh sách bài báo đã bookmark
+  static final ValueNotifier<List<Publication>> bookmarkedPublicationsNotifier =
+      ValueNotifier<List<Publication>>([]);
+
+  static Future<File> _getBookmarksFile() async {
+    final directory = await getApplicationDocumentsDirectory();
+    return File('${directory.path}/bookmarks.json');
+  }
+
+  static Future<void> loadBookmarks() async {
+    try {
+      final file = await _getBookmarksFile();
+      if (await file.exists()) {
+        final content = await file.readAsString();
+        final List<dynamic> jsonList = jsonDecode(content);
+        final List<Publication> loaded = jsonList
+            .map((j) => Publication.fromJson(j as Map<String, dynamic>))
+            .toList();
+        bookmarkedPublicationsNotifier.value = loaded;
+      }
+    } catch (_) {}
+  }
+
+  static Future<void> _saveBookmarks() async {
+    try {
+      final file = await _getBookmarksFile();
+      final jsonList = bookmarkedPublicationsNotifier.value
+          .map((p) => p.toJson())
+          .toList();
+      await file.writeAsString(jsonEncode(jsonList));
+    } catch (_) {}
+  }
+
+  static void toggleBookmark(Publication pub) {
+    final current = List<Publication>.from(bookmarkedPublicationsNotifier.value);
+    final index = current.indexWhere((p) => p.id == pub.id);
+    if (index >= 0) {
+      current.removeAt(index);
+    } else {
+      current.add(pub);
+    }
+    bookmarkedPublicationsNotifier.value = current;
+    _saveBookmarks();
+  }
+
+  /// Quản lý danh sách bài báo xem gần đây
+  static final ValueNotifier<List<Publication>> recentlyViewedNotifier =
+      ValueNotifier<List<Publication>>([]);
+
+  static Future<File> _getRecentlyViewedFile() async {
+    final directory = await getApplicationDocumentsDirectory();
+    return File('${directory.path}/recently_viewed.json');
+  }
+
+  static Future<void> loadRecentlyViewed() async {
+    try {
+      final file = await _getRecentlyViewedFile();
+      if (await file.exists()) {
+        final content = await file.readAsString();
+        final List<dynamic> jsonList = jsonDecode(content);
+        final List<Publication> loaded = jsonList
+            .map((j) => Publication.fromJson(j as Map<String, dynamic>))
+            .toList();
+        recentlyViewedNotifier.value = loaded;
+      }
+    } catch (_) {}
+  }
+
+  static Future<void> _saveRecentlyViewed() async {
+    try {
+      final file = await _getRecentlyViewedFile();
+      final jsonList = recentlyViewedNotifier.value
+          .map((p) => p.toJson())
+          .toList();
+      await file.writeAsString(jsonEncode(jsonList));
+    } catch (_) {}
+  }
+
+  static void addToRecentlyViewed(Publication pub) {
+    final current = List<Publication>.from(recentlyViewedNotifier.value);
+    current.removeWhere((p) => p.id == pub.id);
+    current.insert(0, pub);
+    if (current.length > 5) {
+      current.removeLast();
+    }
+    recentlyViewedNotifier.value = current;
+    _saveRecentlyViewed();
+  }
 
   static void setTotalPublicationsCount(int count) {
     totalPublicationsCountNotifier.value = count;

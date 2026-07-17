@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:journal_trend_analysis_mb/utils/translation.dart';
 import 'package:journal_trend_analysis_mb/services/mock_firebase_service.dart';
 import 'package:journal_trend_analysis_mb/widgets/glass_card.dart';
+import 'package:journal_trend_analysis_mb/widgets/works_list_bottom_sheet.dart';
 import 'package:journal_trend_analysis_mb/widgets/research_trend_analysis/publication_trend_chart.dart';
 import 'package:journal_trend_analysis_mb/screens/detail_page.dart';
 import 'package:journal_trend_analysis_mb/screens/keywords_page.dart';
@@ -481,67 +482,84 @@ class _KeywordDetailPageState extends State<KeywordDetailPage> {
               rankBgColor = const Color(0xFF80CBC4).withOpacity(0.1);
           }
 
-          return Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 6.0),
-            child: Row(
-              children: [
-                Container(
-                  width: 24,
-                  height: 24,
-                  decoration: BoxDecoration(
-                    color: rankBgColor,
-                    shape: BoxShape.circle,
-                  ),
-                  alignment: Alignment.center,
-                  child: Text(
-                    (i + 1).toString(),
-                    style: GoogleFonts.outfit(
-                      color: rankColor,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
+          return InkWell(
+            borderRadius: BorderRadius.circular(8),
+            onTap: () {
+              final authorPubs = widget.keywordStats.publications
+                  .where((pub) => pub.authors.contains(author.name))
+                  .toList();
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                backgroundColor: Colors.transparent,
+                builder: (context) => WorksListBottomSheet(
+                  title: '${'articles_by_author'.tr()}:\n${author.name}',
+                  publications: authorPubs,
+                ),
+              );
+            },
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 6.0),
+              child: Row(
+                children: [
+                  Container(
+                    width: 24,
+                    height: 24,
+                    decoration: BoxDecoration(
+                      color: rankBgColor,
+                      shape: BoxShape.circle,
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      (i + 1).toString(),
+                      style: GoogleFonts.outfit(
+                        color: rankColor,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        author.name,
-                        style: GoogleFonts.outfit(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 13,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          author.name,
+                          style: GoogleFonts.outfit(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 6),
-                      // Thanh thanh đo tỷ lệ đóng góp trực quan của Tác giả (Ranking bar chart concept)
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(2),
-                        child: SizedBox(
-                          height: 4,
-                          width: 140,
-                          child: LinearProgressIndicator(
-                            value: maxAuthorCount == 0 ? 0.0 : author.count / maxAuthorCount,
-                            backgroundColor: Colors.white.withOpacity(0.05),
-                            valueColor: AlwaysStoppedAnimation<Color>(rankColor.withOpacity(0.85)),
+                        const SizedBox(height: 6),
+                        // Thanh thanh đo tỷ lệ đóng góp trực quan của Tác giả (Ranking bar chart concept)
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(2),
+                          child: SizedBox(
+                            height: 4,
+                            width: 140,
+                            child: LinearProgressIndicator(
+                              value: maxAuthorCount == 0 ? 0.0 : author.count / maxAuthorCount,
+                              backgroundColor: Colors.white.withOpacity(0.05),
+                              valueColor: AlwaysStoppedAnimation<Color>(rankColor.withOpacity(0.85)),
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-                Text(
-                  '${author.count} ${'articles'.tr()}',
-                  style: GoogleFonts.inter(
-                    color: const Color(0xFF80CBC4),
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
+                  Text(
+                    '${author.count} ${'articles'.tr()}',
+                    style: GoogleFonts.inter(
+                      color: const Color(0xFF80CBC4),
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           );
         }),
@@ -561,54 +579,76 @@ class _KeywordDetailPageState extends State<KeywordDetailPage> {
       children: topList.map((entry) {
         return Container(
           margin: const EdgeInsets.only(bottom: 8),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
             color: Colors.white.withOpacity(0.04),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: Colors.white.withOpacity(0.08)),
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: () {
+                final journalPubs = widget.keywordStats.publications
+                    .where((pub) => pub.journalName == entry.key)
+                    .toList();
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  backgroundColor: Colors.transparent,
+                  builder: (context) => WorksListBottomSheet(
+                    title: '${'articles_from_journal'.tr()}:\n${entry.key}',
+                    publications: journalPubs,
+                  ),
+                );
+              },
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      entry.key,
-                      style: GoogleFonts.outfit(color: Colors.white70, fontSize: 13),
-                      overflow: TextOverflow.ellipsis,
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            entry.key,
+                            style: GoogleFonts.outfit(color: Colors.white70, fontSize: 13),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 6),
+                          // Thanh đo tỷ lệ bài đăng của Tạp chí
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(2),
+                            child: SizedBox(
+                              height: 3,
+                              width: 120,
+                              child: LinearProgressIndicator(
+                                value: maxJournalCount == 0 ? 0.0 : entry.value / maxJournalCount,
+                                backgroundColor: Colors.white.withOpacity(0.05),
+                                valueColor: AlwaysStoppedAnimation<Color>(const Color(0xFF80CBC4).withOpacity(0.7)),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                    const SizedBox(height: 6),
-                    // Thanh đo tỷ lệ bài đăng của Tạp chí
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(2),
-                      child: SizedBox(
-                        height: 3,
-                        width: 120,
-                        child: LinearProgressIndicator(
-                          value: maxJournalCount == 0 ? 0.0 : entry.value / maxJournalCount,
-                          backgroundColor: Colors.white.withOpacity(0.05),
-                          valueColor: AlwaysStoppedAnimation<Color>(const Color(0xFF80CBC4).withOpacity(0.7)),
-                        ),
+                    const SizedBox(width: 10),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.08),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        '${entry.value} ${'articles'.tr()}',
+                        style: GoogleFonts.inter(color: Colors.white, fontSize: 11),
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(width: 10),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.08),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  '${entry.value} ${'articles'.tr()}',
-                  style: GoogleFonts.inter(color: Colors.white, fontSize: 11),
-                ),
-              ),
-            ],
+            ),
           ),
         );
       }).toList(),

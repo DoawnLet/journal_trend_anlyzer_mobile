@@ -30,6 +30,15 @@ class KeywordsPage extends StatefulWidget {
 }
 
 class _KeywordsPageState extends State<KeywordsPage> {
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -87,9 +96,16 @@ class _KeywordsPageState extends State<KeywordsPage> {
                     }).toList()
                       ..sort((a, b) => b.count.compareTo(a.count));
 
+                    // Lọc cục bộ danh sách từ khóa theo từ khóa tìm kiếm
+                    final List<KeywordStats> filteredStats = _searchQuery.trim().isEmpty
+                        ? allStats
+                        : allStats
+                            .where((k) => k.keyword.toLowerCase().contains(_searchQuery.trim().toLowerCase()))
+                            .toList();
+
                     // 3. Giới hạn số lượng từ khóa hiển thị bằng Remote Config
                     final limit = MockFirebaseService.instance.maxKeywordsDisplayed;
-                    final displayedStats = allStats.take(limit).toList();
+                    final displayedStats = filteredStats.take(limit).toList();
 
                     // Phân chia: 50% top đầu làm "Most Frequent", số còn lại làm "Trending"
                     final midpoint = (displayedStats.length / 2).ceil();
@@ -101,35 +117,55 @@ class _KeywordsPageState extends State<KeywordsPage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          // Ô tìm kiếm từ khóa
+                          _buildSearchField(),
+                          const SizedBox(height: 16),
+
                           // Tiêu đề số liệu từ khóa
                           _buildHeaderStats(
-                            allStats.length,
+                            filteredStats.length,
                             SharedState.totalPublicationsCountNotifier.value > 0
                                 ? SharedState.totalPublicationsCountNotifier.value
                                 : publications.length,
                           ),
                           const SizedBox(height: 24),
 
-                          // Biểu đồ tần suất Từ khóa
-                          Text(
-                            'keyword_frequency_chart'.tr(),
-                            style: GoogleFonts.outfit(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
+                          if (displayedStats.isEmpty) ...[
+                            const SizedBox(height: 40),
+                            const Center(
+                              child: Column(
+                                children: [
+                                  Icon(Icons.search_off_rounded, size: 48, color: Colors.white30),
+                                  SizedBox(height: 12),
+                                  Text(
+                                    'No keywords found',
+                                    style: TextStyle(color: Colors.white60, fontSize: 13),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 10),
-                          _buildFrequencyChart(displayedStats.take(6).toList()),
-                          const SizedBox(height: 24),
+                          ] else ...[
+                            // Biểu đồ tần suất Từ khóa
+                            Text(
+                              'keyword_frequency_chart'.tr(),
+                              style: GoogleFonts.outfit(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            _buildFrequencyChart(displayedStats.take(6).toList()),
+                            const SizedBox(height: 24),
 
-                          // Section 1: Most Frequent Keywords
-                          _buildKeywordsSection('most_frequent_keywords'.tr(), frequentKeywords, limit, allStats.length),
-                          const SizedBox(height: 24),
+                            // Section 1: Most Frequent Keywords
+                            _buildKeywordsSection('most_frequent_keywords'.tr(), frequentKeywords, limit, filteredStats.length),
+                            const SizedBox(height: 24),
 
-                          // Section 2: Trending Keywords
-                          if (trendingKeywords.isNotEmpty) ...[
-                            _buildKeywordsSection('trending_keywords'.tr(), trendingKeywords, limit, allStats.length, isTrending: true),
+                            // Section 2: Trending Keywords
+                            if (trendingKeywords.isNotEmpty) ...[
+                              _buildKeywordsSection('trending_keywords'.tr(), trendingKeywords, limit, filteredStats.length, isTrending: true),
+                            ],
                           ],
                         ],
                       ),
@@ -140,6 +176,33 @@ class _KeywordsPageState extends State<KeywordsPage> {
             );
           },
         ),
+      ),
+    );
+  }
+
+  Widget _buildSearchField() {
+    return TextField(
+      controller: _searchController,
+      onChanged: (value) {
+        setState(() {
+          _searchQuery = value;
+        });
+      },
+      style: const TextStyle(color: Colors.white),
+      decoration: InputDecoration(
+        hintText: 'search_keywords_hint'.tr(),
+        prefixIcon: const Icon(Icons.search_rounded, color: Colors.white70),
+        suffixIcon: _searchController.text.isNotEmpty
+            ? IconButton(
+                icon: const Icon(Icons.clear_rounded, color: Colors.white70),
+                onPressed: () {
+                  _searchController.clear();
+                  setState(() {
+                    _searchQuery = '';
+                  });
+                },
+              )
+            : null,
       ),
     );
   }

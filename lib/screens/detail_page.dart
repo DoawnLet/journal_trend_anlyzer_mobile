@@ -89,6 +89,9 @@ class DetailPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    
+    // Thêm vào danh sách xem gần đây
+    SharedState.addToRecentlyViewed(publication);
 
     return Scaffold(
       appBar: AppBar(
@@ -97,6 +100,35 @@ class DetailPage extends StatelessWidget {
           icon: const Icon(Icons.arrow_back_rounded),
           onPressed: () => Navigator.pop(context),
         ),
+        actions: [
+          ValueListenableBuilder<List<Publication>>(
+            valueListenable: SharedState.bookmarkedPublicationsNotifier,
+            builder: (context, bookmarks, _) {
+              final isBookmarked = bookmarks.any((p) => p.id == publication.id);
+              return IconButton(
+                icon: Icon(
+                  isBookmarked ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+                  color: isBookmarked ? const Color(0xFF80CBC4) : Colors.white,
+                ),
+                tooltip: 'Bookmark',
+                onPressed: () {
+                  SharedState.toggleBookmark(publication);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        isBookmarked
+                            ? 'removed_from_bookmarks'.tr()
+                            : 'added_to_bookmarks'.tr(),
+                      ),
+                      duration: const Duration(seconds: 1),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
