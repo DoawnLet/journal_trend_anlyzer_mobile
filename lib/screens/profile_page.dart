@@ -225,7 +225,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     ),
                     pw.SizedBox(height: 4),
                     pw.Text(
-                      'Báo Cáo Phân Tích Xu Hướng Nghiên Cứu Khoa Học',
+                      'Scientific Research Trend Analysis Report',
                       style: pw.TextStyle(
                         font: pdfFont,
                         fontSize: 12,
@@ -248,7 +248,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       pw.RichText(
                         text: pw.TextSpan(
                           children: [
-                            pw.TextSpan(text: 'Nhà phân tích: ', style: pw.TextStyle(font: pdfFontBold, fontSize: 10, color: PdfColor.fromInt(0xFF555555))),
+                            pw.TextSpan(text: 'Analyst: ', style: pw.TextStyle(font: pdfFontBold, fontSize: 10, color: PdfColor.fromInt(0xFF555555))),
                             pw.TextSpan(text: userName, style: pw.TextStyle(font: pdfFont, fontSize: 10, color: PdfColors.black)),
                           ],
                         ),
@@ -257,7 +257,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       pw.RichText(
                         text: pw.TextSpan(
                           children: [
-                            pw.TextSpan(text: 'Chủ đề: ', style: pw.TextStyle(font: pdfFontBold, fontSize: 10, color: PdfColor.fromInt(0xFF555555))),
+                            pw.TextSpan(text: 'Topic: ', style: pw.TextStyle(font: pdfFontBold, fontSize: 10, color: PdfColor.fromInt(0xFF555555))),
                             pw.TextSpan(text: topic.toUpperCase(), style: pw.TextStyle(font: pdfFont, fontSize: 10, color: PdfColors.black)),
                           ],
                         ),
@@ -270,7 +270,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       pw.RichText(
                         text: pw.TextSpan(
                           children: [
-                            pw.TextSpan(text: 'Ngày xuất: ', style: pw.TextStyle(font: pdfFontBold, fontSize: 10, color: PdfColor.fromInt(0xFF555555))),
+                            pw.TextSpan(text: 'Date Generated: ', style: pw.TextStyle(font: pdfFontBold, fontSize: 10, color: PdfColor.fromInt(0xFF555555))),
                             pw.TextSpan(text: '${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}', style: pw.TextStyle(font: pdfFont, fontSize: 10, color: PdfColors.black)),
                           ],
                         ),
@@ -279,7 +279,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       pw.RichText(
                         text: pw.TextSpan(
                           children: [
-                            pw.TextSpan(text: 'Nguồn: ', style: pw.TextStyle(font: pdfFontBold, fontSize: 10, color: PdfColor.fromInt(0xFF555555))),
+                            pw.TextSpan(text: 'Source: ', style: pw.TextStyle(font: pdfFontBold, fontSize: 10, color: PdfColor.fromInt(0xFF555555))),
                             pw.TextSpan(text: 'OpenAlex Academic API', style: pw.TextStyle(font: pdfFont, fontSize: 10, color: PdfColors.black)),
                           ],
                         ),
@@ -294,7 +294,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
               // Phần 1: Tóm tắt số liệu phân tích
               pw.Text(
-                'Tóm tắt số liệu phân tích',
+                'Analysis Summary',
                 style: pw.TextStyle(font: pdfFontBold, fontSize: 14, color: PdfColor.fromInt(0xFF1A4747), fontWeight: pw.FontWeight.bold),
               ),
               pw.SizedBox(height: 12),
@@ -302,11 +302,11 @@ class _ProfilePageState extends State<ProfilePage> {
               pw.Table(
                 border: pw.TableBorder.all(color: PdfColor.fromInt(0xFFE0E0E0), width: 0.5),
                 children: [
-                  _buildMetricRow('Tổng số bài viết công bố', totalPubs.toString(), pdfFont, pdfFontBold),
-                  _buildMetricRow('Lượt trích dẫn trung bình', avgCitations.toStringAsFixed(2), pdfFont, pdfFontBold),
-                  _buildMetricRow('Năm hoạt động tích cực nhất', mostActiveYear, pdfFont, pdfFontBold),
-                  _buildMetricRow('Tạp chí xuất bản hàng đầu', topJournal, pdfFont, pdfFontBold),
-                  _buildMetricRow('Tác giả tiêu biểu hàng đầu', topAuthor, pdfFont, pdfFontBold),
+                  _buildMetricRow('Total Publications', totalPubs.toString(), pdfFont, pdfFontBold),
+                  _buildMetricRow('Average Citations', avgCitations.toStringAsFixed(2), pdfFont, pdfFontBold),
+                  _buildMetricRow('Most Active Year', mostActiveYear, pdfFont, pdfFontBold),
+                  _buildMetricRow('Top Journal', topJournal, pdfFont, pdfFontBold),
+                  _buildMetricRow('Top Contributing Author', topAuthor, pdfFont, pdfFontBold),
                 ],
               ),
               pw.SizedBox(height: 24),
@@ -325,7 +325,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     crossAxisAlignment: pw.CrossAxisAlignment.start,
                     children: [
                       pw.Text(
-                        'Bài báo có sức ảnh hưởng lớn nhất',
+                        'Most Influential Publication',
                         style: pw.TextStyle(font: pdfFontBold, fontSize: 12, color: PdfColor.fromInt(0xFF1A4747), fontWeight: pw.FontWeight.bold),
                       ),
                       pw.SizedBox(height: 6),
@@ -335,15 +335,15 @@ class _ProfilePageState extends State<ProfilePage> {
                       ),
                       pw.SizedBox(height: 4),
                       pw.Text(
-                        'Tác giả: ${mostInfluential.authors.join(', ')}',
+                        'Authors: ${mostInfluential.authors.join(', ')}',
                         style: pw.TextStyle(font: pdfFont, fontSize: 9, color: PdfColor.fromInt(0xFF555555)),
                       ),
                       pw.Text(
-                        'Tạp chí: ${mostInfluential.journalName} • Năm: ${mostInfluential.publicationYear}',
+                        'Journal: ${mostInfluential.journalName} • Year: ${mostInfluential.publicationYear}',
                         style: pw.TextStyle(font: pdfFont, fontSize: 9, color: PdfColor.fromInt(0xFF555555)),
                       ),
                       pw.Text(
-                        'Tổng lượt trích dẫn: ${mostInfluential.citationCount}',
+                        'Total Citations: ${mostInfluential.citationCount}',
                         style: pw.TextStyle(font: pdfFontBold, fontSize: 9, color: PdfColor.fromInt(0xFF1A4747)),
                       ),
                     ],
@@ -354,7 +354,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
               // Phần 3: Danh sách bài báo nổi bật
               pw.Text(
-                'Danh sách bài báo nổi bật',
+                'Featured Publications',
                 style: pw.TextStyle(font: pdfFontBold, fontSize: 14, color: PdfColor.fromInt(0xFF1A4747), fontWeight: pw.FontWeight.bold),
               ),
               pw.SizedBox(height: 12),
@@ -372,15 +372,15 @@ class _ProfilePageState extends State<ProfilePage> {
                     children: [
                       pw.Padding(
                         padding: const pw.EdgeInsets.all(8),
-                        child: pw.Text('Năm', style: pw.TextStyle(font: pdfFontBold, fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                        child: pw.Text('Year', style: pw.TextStyle(font: pdfFontBold, fontSize: 9, fontWeight: pw.FontWeight.bold)),
                       ),
                       pw.Padding(
                         padding: const pw.EdgeInsets.all(8),
-                        child: pw.Text('Tiêu đề bài báo', style: pw.TextStyle(font: pdfFontBold, fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                        child: pw.Text('Publication Title', style: pw.TextStyle(font: pdfFontBold, fontSize: 9, fontWeight: pw.FontWeight.bold)),
                       ),
                       pw.Padding(
                         padding: const pw.EdgeInsets.all(8),
-                        child: pw.Text('Trích dẫn', style: pw.TextStyle(font: pdfFontBold, fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                        child: pw.Text('Citations', style: pw.TextStyle(font: pdfFontBold, fontSize: 9, fontWeight: pw.FontWeight.bold)),
                       ),
                     ],
                   ),
