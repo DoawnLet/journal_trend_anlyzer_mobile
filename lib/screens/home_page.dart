@@ -774,8 +774,13 @@ class _HomePageState extends State<HomePage> {
           .whereType());
 
       if (fields.isEmpty) {
-        stepWidget = const Center(
-          child: Text('Không có lĩnh vực nào trong chủ đề này.', style: TextStyle(color: Colors.white60)),
+        stepWidget = Center(
+          child: Text(
+            SharedState.languageNotifier.value == 'vi'
+                ? 'Không có lĩnh vực nào trong chủ đề này.'
+                : 'No fields available in this domain.',
+            style: const TextStyle(color: Colors.white60),
+          ),
         );
       } else {
         stepWidget = GridView.builder(
@@ -828,8 +833,13 @@ class _HomePageState extends State<HomePage> {
           .whereType());
 
       if (subfields.isEmpty) {
-        stepWidget = const Center(
-          child: Text('Không có chuyên ngành nào trong lĩnh vực này.', style: TextStyle(color: Colors.white60)),
+        stepWidget = Center(
+          child: Text(
+            SharedState.languageNotifier.value == 'vi'
+                ? 'Không có chuyên ngành nào trong lĩnh vực này.'
+                : 'No subfields available in this field.',
+            style: const TextStyle(color: Colors.white60),
+          ),
         );
       } else {
         stepWidget = GridView.builder(
@@ -882,8 +892,13 @@ class _HomePageState extends State<HomePage> {
           .whereType());
 
       if (topics.isEmpty) {
-        stepWidget = const Center(
-          child: Text('Không có chủ đề nghiên cứu nào phù hợp.', style: TextStyle(color: Colors.white60)),
+        stepWidget = Center(
+          child: Text(
+            SharedState.languageNotifier.value == 'vi'
+                ? 'Không có chủ đề nghiên cứu nào phù hợp.'
+                : 'No research topics available.',
+            style: const TextStyle(color: Colors.white60),
+          ),
         );
       } else {
         stepWidget = ListView.builder(
@@ -956,8 +971,8 @@ class _HomePageState extends State<HomePage> {
           const SizedBox(height: 4),
           Text(
             _selectedDomain == null 
-                ? 'Chọn chủ đề theo Domain:' 
-                : 'Khám phá cây phân loại chủ đề OpenAlex:',
+                ? (SharedState.languageNotifier.value == 'vi' ? 'Chọn chủ đề theo Domain:' : 'Select topic by Domain:')
+                : (SharedState.languageNotifier.value == 'vi' ? 'Khám phá cây phân loại chủ đề OpenAlex:' : 'Explore OpenAlex taxonomy tree:'),
             style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.bold, fontSize: 13),
           ),
           const SizedBox(height: 8),
@@ -976,7 +991,10 @@ class _HomePageState extends State<HomePage> {
                     });
                   },
                   icon: const Icon(Icons.clear_rounded, size: 14, color: Colors.redAccent),
-                  label: const Text('Xóa', style: TextStyle(color: Colors.redAccent, fontSize: 11, fontWeight: FontWeight.bold)),
+                  label: Text(
+                    SharedState.languageNotifier.value == 'vi' ? 'Xóa' : 'Clear',
+                    style: const TextStyle(color: Colors.redAccent, fontSize: 11, fontWeight: FontWeight.bold),
+                  ),
                   style: TextButton.styleFrom(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     backgroundColor: Colors.redAccent.withOpacity(0.1),
@@ -995,7 +1013,10 @@ class _HomePageState extends State<HomePage> {
                     }
                   },
                   icon: const Icon(Icons.done_rounded, size: 14, color: Colors.black),
-                  label: const Text('Áp dụng', style: TextStyle(color: Colors.black, fontSize: 11, fontWeight: FontWeight.bold)),
+                  label: Text(
+                    SharedState.languageNotifier.value == 'vi' ? 'Áp dụng' : 'Apply',
+                    style: const TextStyle(color: Colors.black, fontSize: 11, fontWeight: FontWeight.bold),
+                  ),
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     backgroundColor: const Color(0xFF80CBC4),
@@ -1031,7 +1052,10 @@ class _HomePageState extends State<HomePage> {
             _selectedSubfield = null;
           });
         },
-        child: const Text('Tất cả', style: TextStyle(color: Colors.white54, fontSize: 12)),
+        child: Text(
+          SharedState.languageNotifier.value == 'vi' ? 'Tất cả' : 'All',
+          style: const TextStyle(color: Colors.white54, fontSize: 12),
+        ),
       ),
     );
 
