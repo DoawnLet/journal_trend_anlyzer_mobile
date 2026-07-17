@@ -16,6 +16,8 @@ import 'package:journal_trend_analysis_mb/viewmodels/shared_state.dart';
 import 'package:journal_trend_analysis_mb/widgets/glass_card.dart';
 import 'package:journal_trend_analysis_mb/screens/detail_page.dart';
 import 'package:journal_trend_analysis_mb/models/publication_model.dart';
+import 'package:journal_trend_analysis_mb/services/openalex_api_service.dart';
+import 'package:journal_trend_analysis_mb/models/publication_filter_model.dart';
 
 /// Màn hình Cá nhân (Profile Screen) tích hợp demo các dịch vụ Firebase
 class ProfilePage extends StatefulWidget {
@@ -29,58 +31,380 @@ class _ProfilePageState extends State<ProfilePage> {
   bool _isExporting = false;
   String? _exportedUrl;
   bool _isScanning = false;
+  late TextEditingController _pdfTopicController;
 
-  Future<void> _exportPdfReport(BuildContext context) async {
+  @override
+  void initState() {
+    super.initState();
+    _pdfTopicController = TextEditingController(
+      text: SharedState.activeQueryNotifier.value.isNotEmpty
+          ? SharedState.activeQueryNotifier.value
+          : 'Artificial Intelligence',
+    );
+  }
+
+  @override
+  void dispose() {
+    _pdfTopicController.dispose();
+    super.dispose();
+  }
+
+  pw.TableRow _buildMetricRow(String label, String value, pw.Font font, pw.Font fontBold) {
+    return pw.TableRow(
+      children: [
+        pw.Padding(
+          padding: const pw.EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: pw.Text(label, style: pw.TextStyle(font: font, fontSize: 10)),
+        ),
+        pw.Padding(
+          padding: const pw.EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: pw.Text(value, style: pw.TextStyle(font: fontBold, fontSize: 10, fontWeight: pw.FontWeight.bold)),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _exportPdfReport(BuildContext context, String topic) async {
     setState(() {
       _isExporting = true;
       _exportedUrl = null;
     });
 
     try {
-      final topic = SharedState.activeQueryNotifier.value.isNotEmpty
-          ? SharedState.activeQueryNotifier.value
-          : 'Artificial Intelligence';
-      final publications = SharedState.filteredPublicationsNotifier.value;
+      final api = OpenAlexApiService();
+      final data = await api.getWorksByPublicationFilter(PublicationFilter(keyword: topic));
+      final List results = data['results'] ?? [];
+      final publications = results.map((json) => Publication.fromJson(json)).toList();
+
+      final auth = Provider.of<AuthNotifier>(context, listen: false);
+      final user = auth.currentUser;
+      final userName = user?.displayName ?? 'Duy Trần';
+
+      // 0. Tải phông chữ hỗ trợ tiếng Việt có dấu
+      pw.Font? font;
+      pw.Font? fontBold;
+
+      // Thử đọc phông chữ hệ thống Android (offline)
+      try {
+        final regFile = File('/system/fonts/Roboto-Regular.ttf');
+        final boldFile = File('/system/fonts/Roboto-Bold.ttf');
+        if (regFile.existsSync() && boldFile.existsSync()) {
+          font = pw.Font.ttf(regFile.readAsBytesSync().buffer.asByteData());
+          fontBold = pw.Font.ttf(boldFile.readAsBytesSync().buffer.asByteData());
+        }
+      } catch (_) {}
+
+      // Nếu không tìm thấy, thử tải từ Google Fonts gstatic CDN (v51 mới nhất)
+      if (font == null || fontBold == null) {
+        try {
+          final fontRes = await http.get(Uri.parse('https://fonts.gstatic.com/s/roboto/v51/KFOMCnqEu92Fr1ME7kSn66aGLdTylUAMQXC89YmC2DPNWubEbWmT.ttf'));
+          final fontBoldRes = await http.get(Uri.parse('https://fonts.gstatic.com/s/roboto/v51/KFOMCnqEu92Fr1ME7kSn66aGLdTylUAMQXC89YmC2DPNWuYjammT.ttf'));
+          if (fontRes.statusCode == 200 && fontBoldRes.statusCode == 200) {
+            font = pw.Font.ttf(fontRes.bodyBytes.buffer.asByteData());
+            fontBold = pw.Font.ttf(fontBoldRes.bodyBytes.buffer.asByteData());
+          }
+        } catch (_) {}
+      }
+
+      // Nếu không tìm thấy, thử tải từ cdnjs CDN
+      if (font == null || fontBold == null) {
+        try {
+          final fontRes = await http.get(Uri.parse('https://cdnjs.cloudflare.com/ajax/libs/material-design-lite/1.3.0/fonts/Roboto-Regular.ttf'));
+          final fontBoldRes = await http.get(Uri.parse('https://cdnjs.cloudflare.com/ajax/libs/material-design-lite/1.3.0/fonts/Roboto-Bold.ttf'));
+          if (fontRes.statusCode == 200 && fontBoldRes.statusCode == 200) {
+            font = pw.Font.ttf(fontRes.bodyBytes.buffer.asByteData());
+            fontBold = pw.Font.ttf(fontBoldRes.bodyBytes.buffer.asByteData());
+          }
+        } catch (_) {}
+      }
+
+      // Nếu vẫn không được, tải từ GitHub raw (static path)
+      if (font == null || fontBold == null) {
+        try {
+          final fontRes = await http.get(Uri.parse('https://raw.githubusercontent.com/google/fonts/main/ofl/roboto/static/Roboto-Regular.ttf'));
+          final fontBoldRes = await http.get(Uri.parse('https://raw.githubusercontent.com/google/fonts/main/ofl/roboto/static/Roboto-Bold.ttf'));
+          if (fontRes.statusCode == 200 && fontBoldRes.statusCode == 200) {
+            font = pw.Font.ttf(fontRes.bodyBytes.buffer.asByteData());
+            fontBold = pw.Font.ttf(fontBoldRes.bodyBytes.buffer.asByteData());
+          }
+        } catch (_) {}
+      }
+
+      final pdfFont = font ?? pw.Font.helvetica();
+      final pdfFontBold = fontBold ?? pw.Font.helveticaBold();
+
+      // Tính toán các số liệu thống kê thực tế
+      final totalPubs = publications.length;
+      final double avgCitations = publications.isEmpty 
+          ? 0.0 
+          : publications.map((p) => p.citationCount).fold(0, (sum, c) => sum + c) / publications.length;
+
+      // Năm hoạt động tích cực nhất
+      String mostActiveYear = 'N/A';
+      if (publications.isNotEmpty) {
+        final Map<int, int> yearMap = {};
+        for (var p in publications) {
+          yearMap[p.publicationYear] = (yearMap[p.publicationYear] ?? 0) + 1;
+        }
+        final sortedYears = yearMap.entries.toList()
+          ..sort((a, b) => b.value.compareTo(a.value));
+        mostActiveYear = sortedYears.first.key.toString();
+      }
+
+      // Tạp chí xuất bản hàng đầu
+      String topJournal = 'N/A';
+      if (publications.isNotEmpty) {
+        final Map<String, int> journalMap = {};
+        for (var p in publications) {
+          if (p.journalName.trim().isNotEmpty && p.journalName != 'Unknown Journal') {
+            journalMap[p.journalName] = (journalMap[p.journalName] ?? 0) + 1;
+          }
+        }
+        if (journalMap.isNotEmpty) {
+          final sortedJournals = journalMap.entries.toList()
+            ..sort((a, b) => b.value.compareTo(a.value));
+          topJournal = sortedJournals.first.key;
+        }
+      }
+
+      // Tác giả tiêu biểu hàng đầu
+      String topAuthor = 'N/A';
+      if (publications.isNotEmpty) {
+        final Map<String, int> authorMap = {};
+        for (var p in publications) {
+          for (var author in p.authors) {
+            if (author.trim().isNotEmpty) {
+              authorMap[author] = (authorMap[author] ?? 0) + 1;
+            }
+          }
+        }
+        if (authorMap.isNotEmpty) {
+          final sortedAuthors = authorMap.entries.toList()
+            ..sort((a, b) => b.value.compareTo(a.value));
+          topAuthor = sortedAuthors.first.key;
+        }
+      }
+
+      // Bài báo có ảnh hưởng nhất
+      final mostInfluential = publications.isNotEmpty 
+          ? (List<Publication>.from(publications)..sort((a, b) => b.citationCount.compareTo(a.citationCount))).first 
+          : null;
+
+      // Lấy 10 bài báo nổi bật có lượt trích dẫn cao nhất
+      final topPubs = List<Publication>.from(publications)
+        ..sort((a, b) => b.citationCount.compareTo(a.citationCount));
+      final featuredPubs = topPubs.take(10).toList();
 
       // 1. Tạo tài liệu PDF thực tế bằng thư viện pdf
       final pdf = pw.Document();
       pdf.addPage(
-        pw.Page(
+        pw.MultiPage(
           pageFormat: PdfPageFormat.a4,
+          margin: const pw.EdgeInsets.all(32),
           build: (pw.Context context) {
-            return pw.Padding(
-              padding: const pw.EdgeInsets.all(32),
-              child: pw.Column(
+            return [
+              // Banner tiêu đề
+              pw.Container(
+                width: double.infinity,
+                padding: const pw.EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                decoration: pw.BoxDecoration(
+                  color: PdfColor.fromInt(0xFF1A4747),
+                  borderRadius: const pw.BorderRadius.all(pw.Radius.circular(8)),
+                ),
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Text(
+                      'TrendJournal Academic Report',
+                      style: pw.TextStyle(
+                        font: pdfFontBold,
+                        fontSize: 20,
+                        color: PdfColors.white,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                    pw.SizedBox(height: 4),
+                    pw.Text(
+                      'Báo Cáo Phân Tích Xu Hướng Nghiên Cứu Khoa Học',
+                      style: pw.TextStyle(
+                        font: pdfFont,
+                        fontSize: 12,
+                        color: PdfColor.fromInt(0xFFB2DFDB),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              pw.SizedBox(height: 20),
+
+              // Dòng thông tin metadata báo cáo
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
-                  pw.Text(
-                    'JOURNAL TREND ANALYZER - ACADEMIC REPORT',
-                    style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold),
+                  pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.RichText(
+                        text: pw.TextSpan(
+                          children: [
+                            pw.TextSpan(text: 'Nhà phân tích: ', style: pw.TextStyle(font: pdfFontBold, fontSize: 10, color: PdfColor.fromInt(0xFF555555))),
+                            pw.TextSpan(text: userName, style: pw.TextStyle(font: pdfFont, fontSize: 10, color: PdfColors.black)),
+                          ],
+                        ),
+                      ),
+                      pw.SizedBox(height: 4),
+                      pw.RichText(
+                        text: pw.TextSpan(
+                          children: [
+                            pw.TextSpan(text: 'Chủ đề: ', style: pw.TextStyle(font: pdfFontBold, fontSize: 10, color: PdfColor.fromInt(0xFF555555))),
+                            pw.TextSpan(text: topic.toUpperCase(), style: pw.TextStyle(font: pdfFont, fontSize: 10, color: PdfColors.black)),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
-                  pw.SizedBox(height: 10),
-                  pw.Divider(),
-                  pw.SizedBox(height: 15),
-                  pw.Text('Research Topic: $topic', style: pw.TextStyle(fontSize: 14)),
-                  pw.Text('Total Matching Publications: ${publications.length}', style: pw.TextStyle(fontSize: 14)),
-                  pw.Text('Date Generated: ${DateTime.now().toLocal()}', style: pw.TextStyle(fontSize: 12)),
-                  pw.SizedBox(height: 30),
-                  pw.Text('Report Summary:', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
-                  pw.SizedBox(height: 10),
-                  pw.Text(
-                    'This report details research trends compiled from the OpenAlex academic API '
-                    'for the topic "$topic". The dataset contains ${publications.length} publications. '
-                    'Additional statistical details including citation distributions, keyword frequencies, '
-                    'and publishing source analyses have been saved securely.',
-                    style: const pw.TextStyle(fontSize: 12),
-                  ),
-                  pw.SizedBox(height: 50),
-                  pw.Align(
-                    alignment: pw.Alignment.centerRight,
-                    child: pw.Text('Generated by Firebase Storage PDF Exporter', style: pw.TextStyle(fontSize: 10, fontStyle: pw.FontStyle.italic)),
+                  pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.end,
+                    children: [
+                      pw.RichText(
+                        text: pw.TextSpan(
+                          children: [
+                            pw.TextSpan(text: 'Ngày xuất: ', style: pw.TextStyle(font: pdfFontBold, fontSize: 10, color: PdfColor.fromInt(0xFF555555))),
+                            pw.TextSpan(text: '${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}', style: pw.TextStyle(font: pdfFont, fontSize: 10, color: PdfColors.black)),
+                          ],
+                        ),
+                      ),
+                      pw.SizedBox(height: 4),
+                      pw.RichText(
+                        text: pw.TextSpan(
+                          children: [
+                            pw.TextSpan(text: 'Nguồn: ', style: pw.TextStyle(font: pdfFontBold, fontSize: 10, color: PdfColor.fromInt(0xFF555555))),
+                            pw.TextSpan(text: 'OpenAlex Academic API', style: pw.TextStyle(font: pdfFont, fontSize: 10, color: PdfColors.black)),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
-            );
+              pw.SizedBox(height: 16),
+              pw.Divider(color: PdfColor.fromInt(0xFFE0E0E0), height: 1),
+              pw.SizedBox(height: 20),
+
+              // Phần 1: Tóm tắt số liệu phân tích
+              pw.Text(
+                'Tóm tắt số liệu phân tích',
+                style: pw.TextStyle(font: pdfFontBold, fontSize: 14, color: PdfColor.fromInt(0xFF1A4747), fontWeight: pw.FontWeight.bold),
+              ),
+              pw.SizedBox(height: 12),
+              
+              pw.Table(
+                border: pw.TableBorder.all(color: PdfColor.fromInt(0xFFE0E0E0), width: 0.5),
+                children: [
+                  _buildMetricRow('Tổng số bài viết công bố', totalPubs.toString(), pdfFont, pdfFontBold),
+                  _buildMetricRow('Lượt trích dẫn trung bình', avgCitations.toStringAsFixed(2), pdfFont, pdfFontBold),
+                  _buildMetricRow('Năm hoạt động tích cực nhất', mostActiveYear, pdfFont, pdfFontBold),
+                  _buildMetricRow('Tạp chí xuất bản hàng đầu', topJournal, pdfFont, pdfFontBold),
+                  _buildMetricRow('Tác giả tiêu biểu hàng đầu', topAuthor, pdfFont, pdfFontBold),
+                ],
+              ),
+              pw.SizedBox(height: 24),
+
+              // Phần 2: Bài báo có ảnh hưởng lớn nhất
+              if (mostInfluential != null) ...[
+                pw.Container(
+                  width: double.infinity,
+                  padding: const pw.EdgeInsets.all(12),
+                  decoration: pw.BoxDecoration(
+                    color: PdfColor.fromInt(0xFFF0F4F4),
+                    borderRadius: const pw.BorderRadius.all(pw.Radius.circular(6)),
+                    border: pw.Border.all(color: PdfColor.fromInt(0xFFB2DFDB), width: 0.5),
+                  ),
+                  child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Text(
+                        'Bài báo có sức ảnh hưởng lớn nhất',
+                        style: pw.TextStyle(font: pdfFontBold, fontSize: 12, color: PdfColor.fromInt(0xFF1A4747), fontWeight: pw.FontWeight.bold),
+                      ),
+                      pw.SizedBox(height: 6),
+                      pw.Text(
+                        mostInfluential.title,
+                        style: pw.TextStyle(font: pdfFontBold, fontSize: 11, color: PdfColors.black),
+                      ),
+                      pw.SizedBox(height: 4),
+                      pw.Text(
+                        'Tác giả: ${mostInfluential.authors.join(', ')}',
+                        style: pw.TextStyle(font: pdfFont, fontSize: 9, color: PdfColor.fromInt(0xFF555555)),
+                      ),
+                      pw.Text(
+                        'Tạp chí: ${mostInfluential.journalName} • Năm: ${mostInfluential.publicationYear}',
+                        style: pw.TextStyle(font: pdfFont, fontSize: 9, color: PdfColor.fromInt(0xFF555555)),
+                      ),
+                      pw.Text(
+                        'Tổng lượt trích dẫn: ${mostInfluential.citationCount}',
+                        style: pw.TextStyle(font: pdfFontBold, fontSize: 9, color: PdfColor.fromInt(0xFF1A4747)),
+                      ),
+                    ],
+                  ),
+                ),
+                pw.SizedBox(height: 24),
+              ],
+
+              // Phần 3: Danh sách bài báo nổi bật
+              pw.Text(
+                'Danh sách bài báo nổi bật',
+                style: pw.TextStyle(font: pdfFontBold, fontSize: 14, color: PdfColor.fromInt(0xFF1A4747), fontWeight: pw.FontWeight.bold),
+              ),
+              pw.SizedBox(height: 12),
+              
+              pw.Table(
+                border: pw.TableBorder.all(color: PdfColor.fromInt(0xFFE0E0E0), width: 0.5),
+                columnWidths: const {
+                  0: pw.FixedColumnWidth(40), // Năm
+                  1: pw.FlexColumnWidth(),     // Tiêu đề
+                  2: pw.FixedColumnWidth(55), // Trích dẫn
+                },
+                children: [
+                  pw.TableRow(
+                    decoration: pw.BoxDecoration(color: PdfColor.fromInt(0xFFF5F5F5)),
+                    children: [
+                      pw.Padding(
+                        padding: const pw.EdgeInsets.all(8),
+                        child: pw.Text('Năm', style: pw.TextStyle(font: pdfFontBold, fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                      ),
+                      pw.Padding(
+                        padding: const pw.EdgeInsets.all(8),
+                        child: pw.Text('Tiêu đề bài báo', style: pw.TextStyle(font: pdfFontBold, fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                      ),
+                      pw.Padding(
+                        padding: const pw.EdgeInsets.all(8),
+                        child: pw.Text('Trích dẫn', style: pw.TextStyle(font: pdfFontBold, fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                      ),
+                    ],
+                  ),
+                  ...featuredPubs.map((p) {
+                    return pw.TableRow(
+                      children: [
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.all(8),
+                          child: pw.Text(p.publicationYear.toString(), style: pw.TextStyle(font: pdfFont, fontSize: 9)),
+                        ),
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.all(8),
+                          child: pw.Text(p.title, style: pw.TextStyle(font: pdfFont, fontSize: 8.5)),
+                        ),
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.all(8),
+                          child: pw.Text(p.citationCount.toString(), style: pw.TextStyle(font: pdfFont, fontSize: 9)),
+                        ),
+                      ],
+                    );
+                  }).toList(),
+                ],
+              ),
+            ];
           },
         ),
       );
@@ -340,24 +664,24 @@ class _ProfilePageState extends State<ProfilePage> {
                       _buildUserCard(user, auth, theme),
                       const SizedBox(height: 20),
 
-                      // 2. Cấu hình từ xa (Remote Config Panel)
-                      _buildRemoteConfigCard(fService, theme),
+                      // 2. Danh sách Bookmark (Được đẩy lên đầu)
+                      _buildBookmarksCard(theme),
                       const SizedBox(height: 20),
 
-                      // 3. Xuất báo cáo và Storage (Report Export Card)
-                      _buildExportReportCard(fService, theme),
-                      const SizedBox(height: 20),
-
-                      // 4. Theo dõi lỗi (Crashlytics Card)
-                      _buildCrashlyticsCard(fService, theme),
-                      const SizedBox(height: 20),
-
-                      // 5. Trung tâm thông báo (Notification Center Card)
+                      // 3. Trung tâm thông báo (Notification Center Card - Đẩy lên thứ hai)
                       _buildNotificationCenterCard(fService, theme),
                       const SizedBox(height: 20),
 
-                      // 6. Nhật ký sự kiện Analytics (Debug Event Log)
-                      _buildAnalyticsLogsCard(fService, theme),
+                      // 4. Cấu hình từ xa (Remote Config Panel)
+                      _buildRemoteConfigCard(fService, theme),
+                      const SizedBox(height: 20),
+
+                      // 5. Xuất báo cáo và Storage (Report Export Card)
+                      _buildExportReportCard(fService, theme),
+                      const SizedBox(height: 20),
+
+                      // 6. Theo dõi lỗi (Crashlytics Card)
+                      _buildCrashlyticsCard(fService, theme),
                     ],
                   ),
                 );
@@ -558,7 +882,31 @@ class _ProfilePageState extends State<ProfilePage> {
             'storage_desc'.tr(),
             style: GoogleFonts.inter(color: Colors.white60, fontSize: 11),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _pdfTopicController,
+            style: GoogleFonts.inter(color: Colors.white, fontSize: 13),
+            decoration: InputDecoration(
+              labelText: SharedState.languageNotifier.value == 'vi'
+                  ? 'Chủ đề cần xuất báo cáo'
+                  : 'Research Topic to Export',
+              labelStyle: GoogleFonts.inter(color: Colors.white60, fontSize: 12),
+              hintText: 'e.g. Deep Learning, Artificial Intelligence',
+              hintStyle: GoogleFonts.inter(color: Colors.white24, fontSize: 12),
+              filled: true,
+              fillColor: Colors.white.withOpacity(0.04),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(color: Colors.white.withOpacity(0.12)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: const BorderSide(color: Color(0xFF2196F3)),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
           if (_isExporting)
             Center(
               child: Padding(
@@ -583,7 +931,12 @@ class _ProfilePageState extends State<ProfilePage> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
-                onPressed: () => _exportPdfReport(context),
+                onPressed: () {
+                  final topic = _pdfTopicController.text.trim();
+                  if (topic.isNotEmpty) {
+                    _exportPdfReport(context, topic);
+                  }
+                },
                 icon: const Icon(Icons.picture_as_pdf_rounded, size: 16),
                 label: Text('export_pdf_report'.tr()),
                 style: ElevatedButton.styleFrom(
@@ -924,11 +1277,12 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Widget _buildAnalyticsLogsCard(MockFirebaseService service, ThemeData theme) {
+  Widget _buildBookmarksCard(ThemeData theme) {
     return GlassCard(
       borderRadius: 18,
-      borderColor: const Color(0xFF00E676).withOpacity(0.25),
-      color: Colors.black.withOpacity(0.35),
+      color: Colors.white.withOpacity(0.06),
+      borderColor: const Color(0xFF80CBC4).withOpacity(0.35),
+      borderWidth: 1.0,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -938,81 +1292,112 @@ class _ProfilePageState extends State<ProfilePage> {
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: const Color(0xFF00E676).withOpacity(0.12),
+                  color: const Color(0xFF80CBC4).withOpacity(0.15),
                 ),
-                child: const Icon(Icons.analytics_rounded, color: Color(0xFF00E676), size: 18),
+                child: const Icon(Icons.bookmark_rounded, color: Color(0xFF80CBC4), size: 18),
               ),
               const SizedBox(width: 10),
               Text(
-                'debug_analytics_logs'.tr(),
+                'bookmarks_title'.tr(),
                 style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 14),
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          Text(
-            'analytics_desc'.tr(),
-            style: GoogleFonts.inter(color: Colors.white60, fontSize: 11),
-          ),
           const SizedBox(height: 16),
-          Container(
-            height: 180,
-            decoration: BoxDecoration(
-              color: const Color(0xFF0A0F1D),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: Colors.white.withOpacity(0.08)),
-            ),
-            child: service.loggedEvents.isEmpty
-                ? Center(
+          ValueListenableBuilder<List<Publication>>(
+            valueListenable: SharedState.bookmarkedPublicationsNotifier,
+            builder: (context, bookmarks, _) {
+              if (bookmarks.isEmpty) {
+                return Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 24.0),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.02),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.white.withOpacity(0.04)),
+                  ),
+                  child: Center(
                     child: Text(
-                      '// Waiting for events...',
-                      style: GoogleFonts.spaceMono(
-                        textStyle: const TextStyle(color: Colors.white24, fontSize: 12),
-                      ),
+                      'no_bookmarks_found'.tr(),
+                      style: GoogleFonts.inter(color: Colors.white30, fontSize: 13),
                     ),
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.all(10),
-                    itemCount: service.loggedEvents.length,
-                    itemBuilder: (context, index) {
-                      final event = service.loggedEvents[index];
-                      final timeStr = '${event.timestamp.hour.toString().padLeft(2, '0')}:${event.timestamp.minute.toString().padLeft(2, '0')}:${event.timestamp.second.toString().padLeft(2, '0')}';
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 12.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                  ),
+                );
+              }
+
+              return ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: bookmarks.length,
+                itemBuilder: (context, index) {
+                  final paper = bookmarks[index];
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 10),
+                    color: Colors.transparent,
+                    elevation: 0,
+                    child: InkWell(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => DetailPage(publication: paper),
+                          ),
+                        );
+                      },
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.04),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.white.withOpacity(0.06)),
+                        ),
+                        child: Row(
                           children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  '> Event: ${event.name}',
-                                  style: GoogleFonts.spaceMono(
-                                    textStyle: const TextStyle(color: Color(0xFF00E676), fontWeight: FontWeight.bold, fontSize: 11),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    paper.title,
+                                    style: GoogleFonts.outfit(
+                                      textStyle: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                                    ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
-                                ),
-                                Text(
-                                  timeStr,
-                                  style: GoogleFonts.spaceMono(
-                                    textStyle: const TextStyle(color: Colors.white30, fontSize: 10),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    '${paper.authors.isNotEmpty ? paper.authors.first : "N/A"} • ${paper.publicationYear} • ${paper.journalName.trim().isEmpty ? 'unknown_journal'.tr() : paper.journalName}',
+                                    style: GoogleFonts.inter(color: Colors.white54, fontSize: 11),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              '  params: ${event.parameters.toString()}',
-                              style: GoogleFonts.spaceMono(
-                                textStyle: const TextStyle(color: Colors.white70, fontSize: 10),
+                                ],
                               ),
                             ),
-                            const SizedBox(height: 8),
-                            Container(height: 1, color: Colors.white10),
+                            const SizedBox(width: 8),
+                            IconButton(
+                              icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent, size: 20),
+                              onPressed: () {
+                                SharedState.toggleBookmark(paper);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('removed_from_bookmarks'.tr()),
+                                    duration: const Duration(seconds: 1),
+                                    behavior: SnackBarBehavior.floating,
+                                  ),
+                                );
+                              },
+                            ),
                           ],
                         ),
-                      );
-                    },
-                  ),
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
           ),
         ],
       ),

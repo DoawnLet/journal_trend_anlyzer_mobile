@@ -18,6 +18,8 @@ class Publication {
   final String? domain;
   final String? landingPageUrl;
   final String? pdfUrl;
+  final String? volume;
+  final String? issue;
 
   const Publication({
     required this.id,
@@ -38,6 +40,8 @@ class Publication {
     this.domain,
     this.landingPageUrl,
     this.pdfUrl,
+    this.volume,
+    this.issue,
   });
 
   /// Khởi tạo đối tượng Publication từ cấu trúc JSON trả về của OpenAlex API.
@@ -200,6 +204,8 @@ class Publication {
       domain: parsedDomain,
       landingPageUrl: parsedLandingPageUrl,
       pdfUrl: parsedPdfUrl,
+      volume: json['biblio']?['volume']?.toString(),
+      issue: json['biblio']?['issue']?.toString(),
     );
   }
 
@@ -234,5 +240,46 @@ class Publication {
     });
 
     return wordsList.join(' ').trim();
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'title': title,
+      'publication_year': publicationYear,
+      'cited_by_count': citationCount,
+      'doi': doi,
+      'primary_location': {
+        'source': {
+          'display_name': journalName,
+        },
+        'landing_page_url': landingPageUrl,
+        'pdf_url': pdfUrl,
+      },
+      'authorships': authors.map((a) => {
+        'author': {
+          'display_name': a,
+        }
+      }).toList(),
+      'abstract_inverted_index': abstractText.isEmpty ? {} : {
+        abstractText: [0]
+      },
+      'concepts': concepts.map((c) => {'display_name': c}).toList(),
+      'topics': topics.map((t) => {'display_name': t}).toList(),
+      'open_access': {
+        'is_oa': isOpenAccess,
+      },
+      'type': publicationType,
+      'biblio': {
+        'volume': volume,
+        'issue': issue,
+      },
+      'primary_topic': {
+        'display_name': primaryTopic,
+        'subfield': {'display_name': subfield},
+        'field': {'display_name': field},
+        'domain': {'display_name': domain},
+      },
+    };
   }
 }

@@ -305,4 +305,56 @@ class OpenAlexApiService {
       throw Exception('Failed to fetch filtered works list: $e');
     }
   }
+
+  /// Search academic journals/sources from OpenAlex API
+  Future<List<Map<String, dynamic>>> searchSources(String query) async {
+    try {
+      final String urlString;
+      if (query.trim().isEmpty) {
+        urlString = "$_baseUrl/sources?per_page=15&sort=works_count:desc&mailto=$_mailto";
+      } else {
+        urlString = "$_baseUrl/sources?search=${Uri.encodeComponent(query.trim())}&per_page=15&mailto=$_mailto";
+      }
+      final response = await _get(Uri.parse(urlString));
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = json.decode(response.body);
+        final List results = data['results'] ?? [];
+        return results.map<Map<String, dynamic>>((item) => {
+          'id': item['id'] ?? '',
+          'display_name': item['display_name'] ?? 'Unknown Journal',
+          'works_count': item['works_count'] ?? 0,
+          'cited_by_count': item['cited_by_count'] ?? 0,
+          'homepage_url': item['homepage_url'] ?? '',
+          'host_organization_name': item['host_organization_name'] ?? '',
+        }).toList();
+      }
+      return const [];
+    } catch (e) {
+      return const [];
+    }
+  }
+
+  /// Fetch publications/works belonging to a source, with an optional search query for topic search
+  Future<Map<String, dynamic>> getWorksBySource(String sourceId, {String query = '', int perPage = 50}) async {
+    try {
+      final List<String> filters = ["primary_location.source.id:$sourceId"];
+      final Map<String, String> queryParams = {
+        'per_page': perPage.toString(),
+        'mailto': _mailto,
+        'filter': filters.join(','),
+      };
+      if (query.trim().isNotEmpty) {
+        queryParams['search'] = query.trim();
+      }
+      final uri = Uri.parse("$_baseUrl/works").replace(queryParameters: queryParams);
+      final response = await _get(uri);
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      } else {
+        throw Exception('OpenAlex Works By Source Error: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Failed to fetch works by source: $e');
+    }
+  }
 }

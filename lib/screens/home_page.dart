@@ -4,13 +4,18 @@ import 'package:journal_trend_analysis_mb/utils/translation.dart';
 import 'package:journal_trend_analysis_mb/services/mock_firebase_service.dart';
 import 'package:journal_trend_analysis_mb/models/publication_model.dart';
 import 'package:journal_trend_analysis_mb/viewmodels/search_notifier.dart';
+import 'package:journal_trend_analysis_mb/viewmodels/auth_notifier.dart';
+import 'package:provider/provider.dart';
 import 'package:journal_trend_analysis_mb/viewmodels/home_notifier.dart';
 import 'package:journal_trend_analysis_mb/viewmodels/shared_state.dart';
 import 'package:journal_trend_analysis_mb/widgets/glass_card.dart';
 import 'package:journal_trend_analysis_mb/widgets/research_trend_analysis/publication_trend_chart.dart';
 import 'package:journal_trend_analysis_mb/widgets/research_trend_analysis/metric_card_grid.dart';
 import 'package:journal_trend_analysis_mb/widgets/search_filter_bottom_sheet.dart';
+import 'package:journal_trend_analysis_mb/widgets/works_list_bottom_sheet.dart';
 import 'package:journal_trend_analysis_mb/screens/detail_page.dart';
+import 'package:journal_trend_analysis_mb/services/taxonomy_api_service.dart';
+import 'package:journal_trend_analysis_mb/models/research_taxonomy_model.dart';
 
 /// Màn hình Trang chủ (Home Screen) - Bảng điều khiển phân tích tổng quan đề tài nghiên cứu
 class HomePage extends StatefulWidget {
@@ -29,13 +34,50 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   late final TextEditingController _searchController;
-  final List<String> _quickTopics = const [
-    'Artificial Intelligence',
-    'Deep Learning',
-    'Quantum Computing',
-    'Climate Change',
-    'Machine Learning',
-    'Blockchain',
+  List<ResearchTopic> _taxonomyTopics = [];
+  bool _isLoadingTaxonomy = false;
+  String? _taxonomyError;
+  ResearchTaxonomyNode? _selectedDomain;
+  ResearchTaxonomyNode? _selectedField;
+  ResearchTaxonomyNode? _selectedSubfield;
+
+  final List<Map<String, dynamic>> _domainPresets = [
+    {
+      'name': 'Physical Sciences',
+      'gradient': const LinearGradient(
+        colors: [Color(0xFF0F2027), Color(0xFF203A43), Color(0xFF2C5364)],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ),
+      'icon': Icons.computer_rounded,
+    },
+    {
+      'name': 'Life Sciences',
+      'gradient': const LinearGradient(
+        colors: [Color(0xFF134E5E), Color(0xFF71B280)],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ),
+      'icon': Icons.eco_rounded,
+    },
+    {
+      'name': 'Health Sciences',
+      'gradient': const LinearGradient(
+        colors: [Color(0xFFD38312), Color(0xFFA83279)],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ),
+      'icon': Icons.medical_services_rounded,
+    },
+    {
+      'name': 'Social Sciences',
+      'gradient': const LinearGradient(
+        colors: [Color(0xFF1E3C72), Color(0xFF2A5298)],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ),
+      'icon': Icons.people_rounded,
+    },
   ];
 
   @override
@@ -43,12 +85,35 @@ class _HomePageState extends State<HomePage> {
     super.initState();
     _searchController = TextEditingController(text: SharedState.activeQueryNotifier.value);
     SharedState.activeQueryNotifier.addListener(_onGlobalQueryChanged);
-    
-    // Nếu chưa có từ khóa nào hoạt động, đặt mặc định là "Artificial Intelligence"
-    if (SharedState.activeQueryNotifier.value.trim().isEmpty) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _triggerSearch('Artificial Intelligence');
-      });
+    _loadTaxonomy();
+  }
+
+  Future<void> _loadTaxonomy() async {
+    if (!mounted) return;
+    setState(() {
+      _isLoadingTaxonomy = true;
+      _taxonomyError = null;
+    });
+    try {
+      final api = TaxonomyApiService();
+      final topics = await api.fetchPopularTopics(limit: 100);
+      if (mounted) {
+        setState(() {
+          _taxonomyTopics = topics;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _taxonomyError = 'Không thể tải cấu trúc phân cấp chủ đề.';
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingTaxonomy = false;
+        });
+      }
     }
   }
 
@@ -64,6 +129,13 @@ class _HomePageState extends State<HomePage> {
       final query = SharedState.activeQueryNotifier.value;
       if (_searchController.text != query) {
         _searchController.text = query;
+      }
+      if (query.trim().isEmpty) {
+        setState(() {
+          _selectedDomain = null;
+          _selectedField = null;
+          _selectedSubfield = null;
+        });
       }
     }
   }
@@ -167,9 +239,8 @@ class _HomePageState extends State<HomePage> {
                       IconButton(
                         icon: const Icon(Icons.clear_rounded, color: Colors.white70, size: 20),
                         onPressed: () {
-                          setState(() {
-                            _searchController.clear();
-                          });
+                          _searchController.clear();
+                          SharedState.setKeyword('');
                         },
                       ),
                     ListenableBuilder(
@@ -255,7 +326,7 @@ class _HomePageState extends State<HomePage> {
 
                   final publications = searchState.publications;
 
-                  if (publications.isEmpty) {
+                  if (SharedState.activeQueryNotifier.value.trim().isEmpty || publications.isEmpty) {
                     return _buildEmptyState();
                   }
 
@@ -316,6 +387,16 @@ class _HomePageState extends State<HomePage> {
                       topAuthor = name;
                     }
                   });
+
+                  // Lấy danh sách Top Journals (top 5)
+                  final sortedJournals = journalCounts.entries.toList()
+                    ..sort((a, b) => b.value.compareTo(a.value));
+                  final topJournalsList = sortedJournals.take(5).toList();
+
+                  // Lấy danh sách Top Authors (top 5)
+                  final sortedAuthors = authorCounts.entries.toList()
+                    ..sort((a, b) => b.value.compareTo(a.value));
+                  final topAuthorsList = sortedAuthors.take(5).toList();
 
                   // Bài báo ảnh hưởng nhất (Lượt trích dẫn cao nhất)
                   Publication? mostInfluentialPaper;
@@ -383,6 +464,33 @@ class _HomePageState extends State<HomePage> {
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
+                            const SizedBox(width: 8),
+                             TextButton.icon(
+                              onPressed: () {
+                                _searchController.clear();
+                                SharedState.setKeyword('');
+                              },
+                              icon: const Icon(Icons.arrow_back_rounded, size: 14, color: Colors.white),
+                              label: Text(
+                                'back_to_filter'.tr(),
+                                style: GoogleFonts.outfit(
+                                  color: Colors.white,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              style: TextButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                backgroundColor: const Color(0xFF80CBC4).withOpacity(0.2),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(20),
+                                  side: BorderSide(
+                                    color: const Color(0xFF80CBC4).withOpacity(0.5),
+                                    width: 1.0,
+                                  ),
+                                ),
+                              ),
+                            ),
                           ],
                         ),
                         const SizedBox(height: 16),
@@ -422,6 +530,108 @@ class _HomePageState extends State<HomePage> {
                           const SizedBox(height: 24),
                         ],
 
+                        // Top Tạp chí (Top Journals)
+                        if (topJournalsList.isNotEmpty) ...[
+                          Text(
+                            'top_journals'.tr(),
+                            style: GoogleFonts.outfit(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          GlassCard(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            child: Column(
+                              children: List.generate(topJournalsList.length, (index) {
+                                final entry = topJournalsList[index];
+                                final isLast = index == topJournalsList.length - 1;
+                                return Column(
+                                  children: [
+                                    _buildTopJournalItem(
+                                      entry.key,
+                                      entry.value,
+                                      theme,
+                                      () {
+                                        final journalPubs = publications
+                                            .where((pub) => pub.journalName == entry.key)
+                                            .toList();
+                                        showModalBottomSheet(
+                                          context: context,
+                                          isScrollControlled: true,
+                                          backgroundColor: Colors.transparent,
+                                          builder: (context) => WorksListBottomSheet(
+                                            title: '${'articles_from_journal'.tr()}:\n${entry.key}',
+                                            publications: journalPubs,
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                    if (!isLast)
+                                      Divider(
+                                        color: Colors.white.withOpacity(0.08),
+                                        height: 1,
+                                      ),
+                                  ],
+                                );
+                              }),
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                        ],
+
+                        // Top Tác giả (Top Authors)
+                        if (topAuthorsList.isNotEmpty) ...[
+                          Text(
+                            'top_authors'.tr(),
+                            style: GoogleFonts.outfit(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          GlassCard(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            child: Column(
+                              children: List.generate(topAuthorsList.length, (index) {
+                                final entry = topAuthorsList[index];
+                                final isLast = index == topAuthorsList.length - 1;
+                                return Column(
+                                  children: [
+                                    _buildTopAuthorItem(
+                                      entry.key,
+                                      entry.value,
+                                      theme,
+                                      () {
+                                        final authorPubs = publications
+                                            .where((pub) => pub.authors.contains(entry.key))
+                                            .toList();
+                                        showModalBottomSheet(
+                                          context: context,
+                                          isScrollControlled: true,
+                                          backgroundColor: Colors.transparent,
+                                          builder: (context) => WorksListBottomSheet(
+                                            title: '${'articles_by_author'.tr()}:\n${entry.key}',
+                                            publications: authorPubs,
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                    if (!isLast)
+                                      Divider(
+                                        color: Colors.white.withOpacity(0.08),
+                                        height: 1,
+                                      ),
+                                  ],
+                                );
+                              }),
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                        ],
+
                         // Danh sách kết quả nghiên cứu
                         Text(
                           'top_influential_papers'.tr(),
@@ -454,49 +664,462 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildEmptyState() {
+    if (_isLoadingTaxonomy) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.symmetric(vertical: 60.0),
+          child: CircularProgressIndicator(color: Color(0xFF80CBC4)),
+        ),
+      );
+    }
+
+    if (_taxonomyError != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline_rounded, size: 48, color: Colors.redAccent),
+              const SizedBox(height: 12),
+              Text(_taxonomyError!, style: const TextStyle(color: Colors.white70)),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: _loadTaxonomy,
+                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF80CBC4)),
+                child: const Text('Thử lại', style: TextStyle(color: Colors.black)),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final theme = Theme.of(context);
+    final breadcrumb = _buildTaxonomyBreadcrumb();
+
+    Widget stepWidget;
+
+    if (_selectedDomain == null) {
+      // Step 1: Chọn Domain (4 domains preset)
+      stepWidget = SizedBox(
+        height: 150,
+        child: ListView.builder(
+          scrollDirection: Axis.horizontal,
+          itemCount: _domainPresets.length,
+          itemBuilder: (context, index) {
+            final preset = _domainPresets[index];
+            final String name = preset['name'];
+            final String label = _getDomainLabel(name);
+            final gradient = preset['gradient'] as Gradient;
+            final icon = preset['icon'] as IconData;
+
+            return Container(
+              width: 140,
+              margin: EdgeInsets.only(
+                left: index == 0 ? 0 : 6,
+                right: index == _domainPresets.length - 1 ? 0 : 6,
+              ),
+              decoration: BoxDecoration(
+                gradient: gradient,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.white.withOpacity(0.12)),
+              ),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(16),
+                  onTap: () {
+                    final domainNode = _uniqueNodes(_taxonomyTopics.map((t) => t.domain).whereType())
+                        .firstWhere(
+                          (d) => d.name == name,
+                          orElse: () => ResearchTaxonomyNode(id: name, name: name, level: ResearchTaxonomyLevel.domain, worksCount: 0),
+                        );
+                    setState(() {
+                      _selectedDomain = domainNode;
+                    });
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(icon, color: Colors.white, size: 28),
+                        const SizedBox(height: 12),
+                        Text(
+                          label,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      );
+    } else if (_selectedField == null) {
+      // Step 2: Chọn Field
+      final fields = _uniqueNodes(_taxonomyTopics
+          .where((topic) => topic.domain?.name == _selectedDomain!.name)
+          .map((topic) => topic.field)
+          .whereType());
+
+      if (fields.isEmpty) {
+        stepWidget = const Center(
+          child: Text('Không có lĩnh vực nào trong chủ đề này.', style: TextStyle(color: Colors.white60)),
+        );
+      } else {
+        stepWidget = GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            crossAxisSpacing: 10,
+            mainAxisSpacing: 10,
+            childAspectRatio: 2.2,
+          ),
+          itemCount: fields.length,
+          itemBuilder: (context, index) {
+            final field = fields[index];
+            return GlassCard(
+              borderRadius: 12,
+              padding: EdgeInsets.zero,
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: () {
+                    setState(() {
+                      _selectedField = field;
+                    });
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    child: Center(
+                      child: Text(
+                        field.name,
+                        style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                        textAlign: TextAlign.center,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      }
+    } else if (_selectedSubfield == null) {
+      // Step 3: Chọn Subfield
+      final subfields = _uniqueNodes(_taxonomyTopics
+          .where((topic) => topic.field?.name == _selectedField!.name)
+          .map((topic) => topic.subfield)
+          .whereType());
+
+      if (subfields.isEmpty) {
+        stepWidget = const Center(
+          child: Text('Không có chuyên ngành nào trong lĩnh vực này.', style: TextStyle(color: Colors.white60)),
+        );
+      } else {
+        stepWidget = GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            crossAxisSpacing: 10,
+            mainAxisSpacing: 10,
+            childAspectRatio: 2.2,
+          ),
+          itemCount: subfields.length,
+          itemBuilder: (context, index) {
+            final subfield = subfields[index];
+            return GlassCard(
+              borderRadius: 12,
+              padding: EdgeInsets.zero,
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: () {
+                    setState(() {
+                      _selectedSubfield = subfield;
+                    });
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    child: Center(
+                      child: Text(
+                        subfield.name,
+                        style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                        textAlign: TextAlign.center,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      }
+    } else {
+      // Step 4: Chọn Topic
+      final topics = _uniqueNodes(_taxonomyTopics
+          .where((topic) => topic.subfield?.name == _selectedSubfield!.name)
+          .map((topic) => topic.topic)
+          .whereType());
+
+      if (topics.isEmpty) {
+        stepWidget = const Center(
+          child: Text('Không có chủ đề nghiên cứu nào phù hợp.', style: TextStyle(color: Colors.white60)),
+        );
+      } else {
+        stepWidget = ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: topics.length,
+          itemBuilder: (context, index) {
+            final topic = topics[index];
+            return Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.04),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.white.withOpacity(0.08)),
+              ),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: () {
+                    _triggerSearch(topic.name);
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            topic.name,
+                            style: GoogleFonts.outfit(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                        const Icon(Icons.arrow_forward_rounded, color: Color(0xFF80CBC4), size: 16),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      }
+    }
+
+    final auth = Provider.of<AuthNotifier>(context);
+    final user = auth.currentUser;
+    final userName = user?.displayName ?? 'Duy Trần';
+
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SizedBox(height: 40),
-          const Icon(Icons.analytics_outlined, size: 64, color: Colors.white30),
-          const SizedBox(height: 16),
+          const SizedBox(height: 24),
           Text(
-            'dashboard_empty_prompt'.tr(),
-            style: const TextStyle(color: Colors.white70),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 32),
-          // Danh sách chủ đề phổ biến đề xuất
-          const Align(
-            alignment: Alignment.centerLeft,
-            child: Padding(
-              padding: EdgeInsets.symmetric(vertical: 8.0),
-              child: Text(
-                'Chủ đề phổ biến:',
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-              ),
+            SharedState.languageNotifier.value == 'vi'
+                ? 'Chào mừng, $userName!'
+                : 'Welcome, $userName!',
+            style: GoogleFonts.outfit(
+              color: const Color(0xFF80CBC4),
+              fontWeight: FontWeight.bold,
+              fontSize: 18,
             ),
           ),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: _quickTopics.map((topic) {
-              return ActionChip(
-                label: Text(topic),
-                backgroundColor: Colors.white.withOpacity(0.08),
-                labelStyle: const TextStyle(color: Colors.white),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                  side: BorderSide(color: Colors.white.withOpacity(0.15)),
-                ),
-                onPressed: () => _triggerSearch(topic),
-              );
-            }).toList(),
+          const SizedBox(height: 4),
+          Text(
+            _selectedDomain == null 
+                ? 'Chọn chủ đề theo Domain:' 
+                : 'Khám phá cây phân loại chủ đề OpenAlex:',
+            style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.bold, fontSize: 13),
           ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(child: breadcrumb),
+              if (_selectedDomain != null) ...[
+                const SizedBox(width: 8),
+                TextButton.icon(
+                  onPressed: () {
+                    setState(() {
+                      _selectedDomain = null;
+                      _selectedField = null;
+                      _selectedSubfield = null;
+                    });
+                  },
+                  icon: const Icon(Icons.clear_rounded, size: 14, color: Colors.redAccent),
+                  label: const Text('Xóa', style: TextStyle(color: Colors.redAccent, fontSize: 11, fontWeight: FontWeight.bold)),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    backgroundColor: Colors.redAccent.withOpacity(0.1),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: BorderSide(color: Colors.redAccent.withOpacity(0.3), width: 1),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    final targetNode = _selectedSubfield ?? _selectedField ?? _selectedDomain;
+                    if (targetNode != null) {
+                      _triggerSearch(targetNode.name);
+                    }
+                  },
+                  icon: const Icon(Icons.done_rounded, size: 14, color: Colors.black),
+                  label: const Text('Áp dụng', style: TextStyle(color: Colors.black, fontSize: 11, fontWeight: FontWeight.bold)),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    backgroundColor: const Color(0xFF80CBC4),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    elevation: 0,
+                  ),
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 16),
+          stepWidget,
+          if (_selectedDomain == null) ...[
+            const SizedBox(height: 32),
+            _buildTopResearchSection(theme),
+            const SizedBox(height: 32),
+            _buildRecentlyViewedSection(theme),
+          ],
+          const SizedBox(height: 40),
         ],
       ),
     );
+  }
+
+  Widget _buildTaxonomyBreadcrumb() {
+    final List<Widget> items = [];
+    items.add(
+      GestureDetector(
+        onTap: () {
+          setState(() {
+            _selectedDomain = null;
+            _selectedField = null;
+            _selectedSubfield = null;
+          });
+        },
+        child: const Text('Tất cả', style: TextStyle(color: Colors.white54, fontSize: 12)),
+      ),
+    );
+
+    if (_selectedDomain != null) {
+      items.add(const Icon(Icons.chevron_right_rounded, color: Colors.white30, size: 14));
+      items.add(
+        GestureDetector(
+          onTap: () {
+            setState(() {
+              _selectedField = null;
+              _selectedSubfield = null;
+            });
+          },
+          child: Text(
+            _getDomainLabel(_selectedDomain!.name),
+            style: const TextStyle(color: Color(0xFF80CBC4), fontSize: 12, fontWeight: FontWeight.bold),
+          ),
+        ),
+      );
+    }
+
+    if (_selectedField != null) {
+      items.add(const Icon(Icons.chevron_right_rounded, color: Colors.white30, size: 14));
+      items.add(
+        GestureDetector(
+          onTap: () {
+            setState(() {
+              _selectedSubfield = null;
+            });
+          },
+          child: Text(
+            _selectedField!.name,
+            style: const TextStyle(color: Color(0xFF80CBC4), fontSize: 12, fontWeight: FontWeight.bold),
+          ),
+        ),
+      );
+    }
+
+    if (_selectedSubfield != null) {
+      items.add(const Icon(Icons.chevron_right_rounded, color: Colors.white30, size: 14));
+      items.add(
+        Text(
+          _selectedSubfield!.name,
+          style: const TextStyle(color: Colors.white70, fontSize: 12),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      child: Wrap(
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 4,
+        children: items,
+      ),
+    );
+  }
+
+  String _getDomainLabel(String name) {
+    if (SharedState.languageNotifier.value == 'vi') {
+      switch (name) {
+        case 'Physical Sciences':
+          return 'Khoa học Tự nhiên & Vật lý';
+        case 'Life Sciences':
+          return 'Khoa học Sự sống & Sinh học';
+        case 'Health Sciences':
+          return 'Y tế & Khoa học Sức khỏe';
+        case 'Social Sciences':
+          return 'Khoa học Xã hội & Nhân văn';
+        default:
+          return name;
+      }
+    } else {
+      return name;
+    }
+  }
+
+  List<ResearchTaxonomyNode> _uniqueNodes(Iterable<ResearchTaxonomyNode> nodes) {
+    final seen = <String>{};
+    final unique = <ResearchTaxonomyNode>[];
+    for (final node in nodes) {
+      final key = '${node.level.name}:${node.id}';
+      if (node.isValid && seen.add(key)) {
+        unique.add(node);
+      }
+    }
+    unique.sort((a, b) => b.worksCount.compareTo(a.worksCount));
+    return unique;
   }
 
   Widget _buildInfluentialPaperCard(Publication paper, ThemeData theme) {
@@ -675,6 +1298,316 @@ class _HomePageState extends State<HomePage> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildTopJournalItem(String name, int count, ThemeData theme, VoidCallback onTap) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(8),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  name,
+                  style: GoogleFonts.outfit(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF80CBC4).withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  '$count ${'articles'.tr()}',
+                  style: GoogleFonts.inter(
+                    color: const Color(0xFF80CBC4),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 11,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTopAuthorItem(String name, int count, ThemeData theme, VoidCallback onTap) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(8),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  name,
+                  style: GoogleFonts.outfit(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF80CBC4).withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  '$count ${'articles'.tr()}',
+                  style: GoogleFonts.inter(
+                    color: const Color(0xFF80CBC4),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 11,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTopResearchSection(ThemeData theme) {
+    final topics = _uniqueNodes(_taxonomyTopics.map((t) => t.topic).whereType()).take(5).toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Icon(Icons.trending_up_rounded, color: Color(0xFF80CBC4), size: 18),
+            const SizedBox(width: 8),
+            Text(
+              SharedState.languageNotifier.value == 'vi' ? 'Nghiên cứu hàng đầu' : 'Top Research',
+              style: GoogleFonts.outfit(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 15,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        if (topics.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.02),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Center(
+              child: Text(
+                SharedState.languageNotifier.value == 'vi'
+                    ? 'Chưa có dữ liệu chủ đề thịnh hành.'
+                    : 'No trending topics data yet.',
+                style: const TextStyle(color: Colors.white30, fontSize: 12),
+              ),
+            ),
+          )
+        else
+          GlassCard(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Column(
+              children: List.generate(topics.length, (index) {
+                final topic = topics[index];
+                final isLast = index == topics.length - 1;
+                return Column(
+                  children: [
+                    Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () {
+                          _triggerSearch(topic.name);
+                        },
+                        borderRadius: BorderRadius.circular(8),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 24,
+                                height: 24,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF80CBC4).withOpacity(0.15),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    '${index + 1}',
+                                    style: const TextStyle(
+                                      color: Color(0xFF80CBC4),
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  topic.name,
+                                  style: GoogleFonts.outfit(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              const Icon(Icons.arrow_forward_rounded, color: Colors.white30, size: 14),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    if (!isLast)
+                      Divider(color: Colors.white.withOpacity(0.08), height: 1),
+                  ],
+                );
+              }),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildRecentlyViewedSection(ThemeData theme) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Icon(Icons.history_rounded, color: Color(0xFF80CBC4), size: 18),
+            const SizedBox(width: 8),
+            Text(
+              SharedState.languageNotifier.value == 'vi' ? 'Xem gần đây' : 'Recently Viewed',
+              style: GoogleFonts.outfit(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 15,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        ValueListenableBuilder<List<Publication>>(
+          valueListenable: SharedState.recentlyViewedNotifier,
+          builder: (context, recentlyViewed, _) {
+            if (recentlyViewed.isEmpty) {
+              return Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 24),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.02),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.white.withOpacity(0.04)),
+                ),
+                child: Center(
+                  child: Text(
+                    SharedState.languageNotifier.value == 'vi'
+                        ? 'Chưa xem bài viết nào gần đây.'
+                        : 'No recently viewed publications yet.',
+                    style: GoogleFonts.inter(color: Colors.white30, fontSize: 13),
+                  ),
+                ),
+              );
+            }
+
+            return GlassCard(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: Column(
+                children: List.generate(recentlyViewed.length, (index) {
+                  final paper = recentlyViewed[index];
+                  final isLast = index == recentlyViewed.length - 1;
+                  return Column(
+                    children: [
+                      Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => DetailPage(publication: paper),
+                              ),
+                            );
+                          },
+                          borderRadius: BorderRadius.circular(8),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        paper.title,
+                                        style: GoogleFonts.outfit(
+                                          textStyle: const TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 13,
+                                          ),
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        '${paper.authors.isNotEmpty ? paper.authors.first : "N/A"} • ${paper.publicationYear} • ${paper.journalName.trim().isEmpty ? 'unknown_journal'.tr() : paper.journalName}',
+                                        style: GoogleFonts.inter(color: Colors.white54, fontSize: 11),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                const Icon(Icons.chevron_right_rounded, color: Colors.white30, size: 18),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      if (!isLast)
+                        Divider(color: Colors.white.withOpacity(0.08), height: 1),
+                    ],
+                  );
+                }),
+              ),
+            );
+          },
+        ),
+      ],
     );
   }
 }

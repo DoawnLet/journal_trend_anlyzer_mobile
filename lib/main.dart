@@ -33,6 +33,10 @@ Future<void> main() async {
     debugPrint("Không tìm thấy file .env hoặc lỗi tải: $e");
   }
 
+  // Tải danh sách bookmark đã lưu trữ
+  await SharedState.loadBookmarks();
+  await SharedState.loadRecentlyViewed();
+
   runApp(const MyApp());
 }
 
